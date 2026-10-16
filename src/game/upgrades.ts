@@ -1,0 +1,190 @@
+/** Shared catalog for the simulation, level-up cards, and loadout HUD. */
+export interface UpgradeDefinition {
+  id: string;
+  name: string;
+  en: string;
+  desc: string;
+  kind: "active" | "passive";
+  icon: string;
+  color: string;
+  maxLevel: number;
+}
+
+export type UpgradeDef = UpgradeDefinition;
+
+export const UPGRADE_DEFS: UpgradeDefinition[] = [
+  {
+    id: "fire",
+    name: "불꽃 래리어트",
+    en: "FLAME LARIAT",
+    desc: "불꽃 볼이 적을 불태워 지속 피해를 줍니다. 레벨마다 화상과 발사 속도 증가.",
+    kind: "active",
+    icon: "🔥",
+    color: "#ff7956",
+    maxLevel: 5,
+  },
+  {
+    id: "ice",
+    name: "빙결 드롭킥",
+    en: "FROST KICK",
+    desc: "얼음 볼이 상대의 전진을 늦춥니다. 레벨마다 둔화 시간과 피해 증가.",
+    kind: "active",
+    icon: "❄",
+    color: "#7ed9ff",
+    maxLevel: 5,
+  },
+  {
+    id: "poison",
+    name: "독 안개",
+    en: "POISON MIST",
+    desc: "독 볼이 중첩되는 독을 남깁니다. 레벨마다 중첩 피해와 지속 시간 증가.",
+    kind: "active",
+    icon: "☣",
+    color: "#b5e86c",
+    maxLevel: 5,
+  },
+  {
+    id: "lightning",
+    name: "번개 수플렉스",
+    en: "CHAIN SUPLEX",
+    desc: "전기 볼의 충격이 주변 적에게 연쇄됩니다. 레벨마다 연쇄 대상 증가.",
+    kind: "active",
+    icon: "ϟ",
+    color: "#ffe47c",
+    maxLevel: 5,
+  },
+  {
+    id: "bomb",
+    name: "파워 밤",
+    en: "POWER BOMB",
+    desc: "충돌 지점에서 폭발해 주변 상대에게 피해를 줍니다. 레벨마다 폭발 범위 증가.",
+    kind: "active",
+    icon: "✹",
+    color: "#ffb46b",
+    maxLevel: 5,
+  },
+  {
+    id: "split",
+    name: "태그 팀",
+    en: "TAG TEAM",
+    desc: "첫 충돌에서 작은 볼 둘로 분열합니다. 레벨마다 분열 볼 피해 증가.",
+    kind: "active",
+    icon: "⋈",
+    color: "#d8a2ff",
+    maxLevel: 5,
+  },
+  {
+    id: "laser",
+    name: "레이저 촙",
+    en: "LASER CHOP",
+    desc: "빠른 관통 볼이 여러 상대를 뚫습니다. 레벨마다 관통 횟수와 피해 증가.",
+    kind: "active",
+    icon: "╱",
+    color: "#ff7eb7",
+    maxLevel: 5,
+  },
+  {
+    id: "boomerang",
+    name: "리턴 엘보",
+    en: "RETURN ELBOW",
+    desc: "회전 볼이 되돌아오며 다시 타격합니다. 레벨마다 크기와 회전 피해 증가.",
+    kind: "active",
+    icon: "↶",
+    color: "#82e7c9",
+    maxLevel: 5,
+  },
+  {
+    id: "power",
+    name: "강철 주먹",
+    en: "IRON FIST",
+    desc: "모든 볼과 기술의 피해가 레벨마다 20% 증가합니다.",
+    kind: "passive",
+    icon: "✊",
+    color: "#ff8b83",
+    maxLevel: 5,
+  },
+  {
+    id: "haste",
+    name: "스피드 스타",
+    en: "SPEED STAR",
+    desc: "기본 볼과 모든 자동 기술의 발사 속도가 레벨마다 15% 증가합니다.",
+    kind: "passive",
+    icon: "»",
+    color: "#ffd885",
+    maxLevel: 5,
+  },
+  {
+    id: "multishot",
+    name: "트리플 태그",
+    en: "MULTI TAG",
+    desc: "기본 발사에 볼 1개를 추가합니다. 레벨마다 볼과 퍼짐 각도가 증가합니다.",
+    kind: "passive",
+    icon: "⁙",
+    color: "#bea7ff",
+    maxLevel: 5,
+  },
+  {
+    id: "ricochet",
+    name: "로프 반동",
+    en: "ROPE REBOUND",
+    desc: "레벨마다 볼의 수명 +1초, 벽 반사 후 피해 +8% (최대 3회).",
+    kind: "passive",
+    icon: "↗",
+    color: "#8fbfff",
+    maxLevel: 5,
+  },
+  {
+    id: "critical",
+    name: "크리티컬 촙",
+    en: "CRITICAL CHOP",
+    desc: "레벨마다 치명타 확률 +8%. 치명타는 피해 2배와 큰 충격을 줍니다.",
+    kind: "passive",
+    icon: "✦",
+    color: "#ffe889",
+    maxLevel: 5,
+  },
+  {
+    id: "magnet",
+    name: "관중의 함성",
+    en: "CROWD MAGNET",
+    desc: "경험치 흡수 범위와 회수 속도가 증가하고 경험치를 레벨마다 10% 더 얻습니다.",
+    kind: "passive",
+    icon: "◎",
+    color: "#6ae0d8",
+    maxLevel: 5,
+  },
+  {
+    id: "vampire",
+    name: "세컨드 윈드",
+    en: "SECOND WIND",
+    desc: "7킬마다 체력을 2 회복합니다. 레벨마다 회복량이 2 증가합니다.",
+    kind: "passive",
+    icon: "♥",
+    color: "#ff8daa",
+    maxLevel: 5,
+  },
+  {
+    id: "armor",
+    name: "아이언 바디",
+    en: "IRON BODY",
+    desc: "받는 피해가 레벨마다 12% 감소합니다 (최대 60%). 즉시 체력 5 회복.",
+    kind: "passive",
+    icon: "⬡",
+    color: "#a6badb",
+    maxLevel: 5,
+  },
+  {
+    id: "heal",
+    name: "메디컬 타임",
+    en: "MEDICAL TIME",
+    desc: "최대 체력의 35%를 즉시 회복합니다. 장비 슬롯을 사용하지 않습니다.",
+    kind: "passive",
+    icon: "✚",
+    color: "#89e9b3",
+    maxLevel: 999,
+  },
+];
+
+export function getUpgrade(id: string): UpgradeDefinition | undefined {
+  return UPGRADE_DEFS.find((upgrade) => upgrade.id === id);
+}

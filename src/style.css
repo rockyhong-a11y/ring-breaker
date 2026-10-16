@@ -2242,3 +2242,718 @@ dialog::backdrop {
   background-size: cover;
   background-position: center;
 }
+/* The Pit Update: health, experience and a readable two-part loadout. */
+.mode-tags {
+  display: flex;
+  gap: 6px;
+  margin: -5px 0 21px;
+}
+.mode-tags span {
+  font-size: 8px;
+  padding: 5px 7px;
+  border-radius: 3px;
+  border: 1px solid #c6f5752a;
+  color: #b9cfa7;
+  background: #c6f57507;
+}
+.fight-tip {
+  display: flex;
+  gap: 10px;
+  color: #607491;
+  padding: 0 3px;
+}
+.fight-tip > .icon {
+  width: 17px;
+  height: 17px;
+  margin-top: 4px;
+}
+.fight-tip p {
+  font-size: 9px;
+  line-height: 1.9;
+  margin: 0;
+}
+.fight-tip strong {
+  font-weight: 500;
+  color: #8f9fb6;
+}
+.run-card h2 {
+  font-size: 52px;
+}
+.run-card .run-description {
+  margin-bottom: 18px;
+}
+.elite-node {
+  border-color: #b6915a;
+  color: #d8b575;
+}
+.combat-bars {
+  padding: 11px 18px 10px;
+  display: grid;
+  gap: 9px;
+  background: #192132;
+  border-bottom: 1px solid #344258;
+}
+.health-group,
+.xp-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.health-group > .icon {
+  width: 11px;
+  height: 11px;
+  color: #f28c9d;
+  fill: #f28c9d;
+}
+.health-track,
+.xp-track {
+  height: 4px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #333c4e;
+  flex: 1;
+}
+.health-track i,
+.xp-track i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #ec8993, #f4b6a8);
+  transition: width 0.2s;
+}
+.health-group > b {
+  font: 500 9px var(--display);
+  width: 44px;
+  text-align: right;
+  letter-spacing: 0.5px;
+  color: #c8bdc9;
+}
+.xp-group > b {
+  color: var(--lime);
+  font: 600 10px var(--display);
+  width: 32px;
+  letter-spacing: 0.4px;
+}
+.xp-track {
+  background: #303d3c;
+  height: 3px;
+}
+.xp-track i {
+  background: var(--lime);
+  width: 0;
+}
+.xp-group > small {
+  font: 500 8px var(--display);
+  letter-spacing: 0.5px;
+  width: 45px;
+  text-align: right;
+  color: #8797ac;
+}
+.kill-counter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #a1afc4;
+}
+.kill-counter > .icon {
+  width: 10px;
+  height: 10px;
+}
+.kill-counter b {
+  font: 600 11px var(--display);
+  color: #d4e1ec;
+}
+.kill-counter small {
+  font: 500 7px var(--display);
+  letter-spacing: 1px;
+}
+.play-prompt > small {
+  font-size: 8px;
+  color: #8799af;
+  display: block;
+  margin-top: 12px;
+}
+.play-prompt > strong {
+  font-size: 40px;
+  line-height: 0.95;
+}
+.play-prompt {
+  top: 46%;
+  padding: 22px 0;
+  background: linear-gradient(
+    transparent,
+    #121a28f7 25%,
+    #121a28f7 75%,
+    transparent
+  );
+}
+.auto-fire-tag {
+  display: block;
+  font: 500 6px var(--display);
+  letter-spacing: 1.4px;
+  color: var(--lime);
+  opacity: 0.7;
+  margin-top: 4px;
+}
+.fighter-art {
+  height: 264px;
+}
+.fighter-art img.sd-hero-image {
+  height: 97%;
+  width: auto;
+  max-width: 95%;
+  top: 4%;
+  left: 50%;
+  transform: translateX(-50%);
+  object-fit: contain;
+  filter: drop-shadow(0 9px 12px #03081790);
+}
+.fighter-bg-text {
+  font-size: 97px;
+  color: #3d51738c;
+  top: 18px;
+  left: 17px;
+}
+.fighter-trait {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 0 18px 20px;
+  padding-top: 15px;
+  border-top: 1px solid #35435d;
+}
+.fighter-trait > .icon {
+  color: var(--orange);
+  width: 21px;
+  height: 21px;
+}
+.fighter-trait strong {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+}
+.fighter-trait small {
+  display: block;
+  font-size: 7px;
+  color: #8b9eb9;
+  margin-top: 5px;
+}
+.fighter-trait > span {
+  font: 600 10px var(--display);
+  color: var(--orange);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.fighter-info h2 {
+  font-size: 22px;
+}
+.build-heading > button {
+  padding: 2px;
+  color: #8094ad;
+}
+.build-heading > button > .icon {
+  height: 16px;
+  width: 16px;
+}
+.loadout-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 19px;
+  font: 500 9px var(--display);
+  letter-spacing: 1.2px;
+  color: #9aacca;
+}
+.loadout-label small {
+  font:
+    400 7px "Noto Sans KR",
+    sans-serif;
+  color: #647c9b;
+  margin-left: 6px;
+  letter-spacing: 0;
+}
+.loadout-label > b {
+  font-weight: 500;
+  color: #7a91ae;
+  letter-spacing: 0.8px;
+}
+.loadout-label.passive-label {
+  margin-top: 15px;
+}
+.build-slots.active-slots {
+  margin-top: 10px;
+  gap: 8px;
+}
+.build-slots.passive-slots {
+  margin-top: 10px;
+  gap: 5px;
+}
+.build-slot {
+  position: relative;
+  overflow: visible;
+  max-width: none;
+  height: 40px;
+  border-radius: 5px;
+}
+.active-slots .empty-slot {
+  max-width: none;
+  height: 40px;
+}
+.passive-slots .build-slot,
+.passive-slots .empty-slot {
+  height: 28px;
+  max-width: none;
+}
+.passive-slots .build-slot > .icon {
+  width: 13px;
+  height: 13px;
+}
+.build-slot > b {
+  position: absolute;
+  bottom: -3px;
+  right: -2px;
+  width: 13px;
+  height: 13px;
+  background: #171f2d;
+  border: 1px solid #506178;
+  color: var(--skill-color, #c6f575);
+  font: 600 8px var(--display);
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+}
+.build-card > p {
+  font-size: 8px;
+  line-height: 1.8;
+  margin-top: 15px;
+}
+.mobile-build-strip {
+  display: none;
+}
+.upgrade-kind {
+  display: block;
+  font: 600 7px var(--display);
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  color: #7da2c9;
+}
+.upgrade-kind.active {
+  color: #eab081;
+}
+.collection-item > small {
+  font-size: 7px;
+}
+.collection-item .upgrade-icon {
+  width: 35px;
+  height: 35px;
+}
+.collection-item .upgrade-icon > .icon {
+  width: 19px;
+  height: 19px;
+}
+.level-pips {
+  display: flex;
+  gap: 4px;
+  margin-top: 15px;
+}
+.level-pips > i {
+  height: 3px;
+  flex: 1;
+  background: #39475e;
+  border-radius: 2px;
+}
+.catalog-tabs {
+  display: flex;
+  gap: 9px;
+  margin: 24px 0 16px;
+}
+.catalog-tabs > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  border: 1px solid #3b4960;
+  background: #151d2b;
+  border-radius: 5px;
+  flex: 1;
+  padding: 12px;
+  font-size: 11px;
+  color: #8a9eb9;
+}
+.catalog-tabs > button.selected {
+  border-color: #c6f57570;
+  background: #c6f5750c;
+  color: var(--lime);
+}
+.catalog-tabs > button > .icon {
+  height: 15px;
+  width: 15px;
+}
+.catalog-tabs b {
+  font: 600 11px var(--display);
+  margin-left: 3px;
+  opacity: 0.7;
+}
+.reward-summary {
+  display: flex;
+  gap: 18px;
+  border-top: 1px solid #344258;
+  border-bottom: 1px solid #344258;
+  padding: 13px 0;
+  font-size: 9px;
+  color: #7e92b1;
+}
+.reward-summary b {
+  color: #c1d0e6;
+  font: 500 12px var(--display);
+  margin-left: 4px;
+}
+.reward-choice > span:nth-child(2) {
+  min-width: 0;
+}
+.reward-choice small {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  color: #9ab1ce;
+  font-size: 7px;
+  letter-spacing: 0.5px;
+}
+.reward-choice small > b {
+  color: var(--lime);
+  font-weight: 500;
+  white-space: nowrap;
+  letter-spacing: 1px;
+}
+.reward-choice p {
+  line-height: 1.8;
+  max-width: 320px;
+  font-size: 10px;
+}
+.reward-choice > .icon {
+  width: 15px;
+  height: 15px;
+}
+.reward-pips {
+  display: flex;
+  gap: 5px;
+  margin-top: 12px;
+}
+.reward-pips > i {
+  display: block;
+  height: 3px;
+  width: 23px;
+  background: #3a465b;
+  border-radius: 2px;
+}
+.reward-pips > i.owned {
+  background: #8ca966;
+}
+.reward-pips > i.next {
+  background: var(--lime);
+  box-shadow: 0 0 6px #c6f57560;
+}
+.combo {
+  font-size: 30px;
+  right: 22px;
+  top: 64%;
+  opacity: 0.85;
+}
+.combo span {
+  font-size: 6px;
+  letter-spacing: 1.4px;
+}
+.finish-stats {
+  justify-content: space-between;
+  gap: 15px;
+}
+.finish-stats b {
+  font-size: 30px;
+}
+.bottom-strip > div {
+  max-width: 72%;
+}
+@media (max-width: 1100px) {
+  .run-card h2 {
+    font-size: 43px;
+  }
+  .fighter-art {
+    height: 244px;
+  }
+  .fighter-trait {
+    margin-left: 13px;
+    margin-right: 13px;
+    gap: 8px;
+  }
+  .fighter-trait small {
+    font-size: 6px;
+  }
+  .fighter-trait > span {
+    font-size: 9px;
+  }
+  .build-slots.active-slots {
+    gap: 7px;
+  }
+  .build-slots.passive-slots {
+    gap: 4px;
+  }
+  .loadout-label {
+    font-size: 8px;
+  }
+  .build-card > p {
+    font-size: 7px;
+  }
+  .fighter-bg-text {
+    font-size: 85px;
+  }
+  .fighter-info h2 {
+    font-size: 21px;
+  }
+}
+@media (max-width: 640px) {
+  .page-heading h1 {
+    font-size: 21px;
+  }
+  .page-heading p {
+    font-size: 9px;
+  }
+  .combat-bars {
+    padding: 9px 15px 8px;
+    gap: 8px;
+  }
+  .health-group > b {
+    font-size: 8px;
+    width: 44px;
+  }
+  .xp-group > b {
+    font-size: 9px;
+    width: 32px;
+  }
+  .xp-group > small {
+    font-size: 7px;
+  }
+  .combat-bars .health-track {
+    height: 4px;
+  }
+  .combat-bars .xp-track {
+    height: 3px;
+  }
+  .arena-controls {
+    margin-top: 10px;
+  }
+  .arena-controls > div {
+    gap: 8px;
+    font-size: 8px;
+    position: relative;
+  }
+  .auto-fire-tag {
+    font-size: 6px;
+    margin-top: 4px;
+  }
+  .arena-controls > div > .icon {
+    width: 13px;
+    height: 13px;
+  }
+  .finisher-btn {
+    padding: 10px 12px;
+  }
+  .arena-note {
+    margin-top: 10px;
+  }
+  .mobile-build-strip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin: 15px 3px 0;
+  }
+  .mobile-build-strip > span:not(.empty-slot) {
+    font: 600 7px var(--display);
+    color: #8196b4;
+    margin-right: 2px;
+  }
+  .mobile-build-strip .passive-indicator {
+    margin-left: 6px;
+  }
+  .mobile-build-strip .build-slot,
+  .mobile-build-strip .empty-slot {
+    height: 23px;
+    min-width: 0;
+    flex: 1;
+    max-width: 29px;
+    border-radius: 3px;
+    font-size: 13px;
+  }
+  .mobile-build-strip .build-slot > .icon {
+    width: 12px;
+    height: 12px;
+  }
+  .mobile-build-strip .build-slot > b {
+    width: 9px;
+    height: 10px;
+    font-size: 6px;
+    right: -2px;
+    bottom: -3px;
+  }
+  .build-card {
+    padding-top: 18px;
+  }
+  .loadout-label {
+    font-size: 10px;
+    margin-top: 20px;
+  }
+  .loadout-label small {
+    font-size: 8px;
+  }
+  .build-slots.active-slots .build-slot,
+  .build-slots.active-slots .empty-slot {
+    height: 45px;
+  }
+  .build-slots.passive-slots .build-slot,
+  .build-slots.passive-slots .empty-slot {
+    height: 34px;
+  }
+  .build-card > p {
+    font-size: 9px;
+    margin-top: 17px;
+  }
+  .right-column {
+    gap: 12px;
+  }
+  .fight-tip {
+    display: none;
+  }
+  .play-prompt > strong {
+    font-size: 38px;
+  }
+  .play-prompt > small {
+    font-size: 7px;
+    margin-top: 13px;
+  }
+  .play-prompt {
+    top: 43%;
+    padding: 24px 0;
+  }
+  .play-prompt > button {
+    font-size: 10px;
+    padding: 12px 17px;
+  }
+  .upgrade-kind {
+    font-size: 7px;
+    letter-spacing: 0.7px;
+  }
+  .collection-item p {
+    font-size: 9px;
+    line-height: 1.85;
+  }
+  .catalog-tabs {
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .catalog-tabs > button {
+    font-size: 10px;
+    padding: 11px;
+  }
+  .reward-summary {
+    gap: 10px;
+    font-size: 8px;
+    justify-content: space-between;
+  }
+  .reward-summary b {
+    font-size: 10px;
+    margin-left: 3px;
+  }
+  .reward-choice small {
+    font-size: 6px;
+    letter-spacing: 0.6px;
+    gap: 8px;
+  }
+  .reward-choice p {
+    font-size: 9px;
+    line-height: 1.9;
+  }
+  .reward-choice > .icon {
+    width: 13px;
+    height: 13px;
+  }
+  .reward-choice {
+    padding: 18px 13px;
+    gap: 12px;
+  }
+  .reward-choice .upgrade-icon {
+    width: 32px;
+    height: 32px;
+  }
+  .reward-choice .upgrade-icon > .icon {
+    width: 18px;
+    height: 18px;
+  }
+  .reward-pips > i {
+    width: 20px;
+  }
+  .bottom-strip > div {
+    max-width: 100%;
+  }
+  .kill-counter {
+    font-size: 8px;
+  }
+  .kill-counter > .icon {
+    width: 9px;
+    height: 9px;
+  }
+  .kill-counter b {
+    font-size: 10px;
+  }
+  .arena-brand {
+    font-size: 6px;
+    letter-spacing: 1.4px;
+  }
+  .combo {
+    font-size: 24px;
+    right: 19px;
+    top: 65%;
+  }
+  .combo span {
+    font-size: 5px;
+  }
+  .finish-stats b {
+    font-size: 28px;
+  }
+}
+@media (max-width: 380px) {
+  .page-heading h1 {
+    font-size: 18px;
+  }
+  .page-heading p {
+    font-size: 8px;
+  }
+  .play-prompt > strong {
+    font-size: 32px;
+  }
+  .mobile-build-strip {
+    gap: 4px;
+  }
+  .mobile-build-strip .passive-indicator {
+    margin-left: 3px;
+  }
+  .mobile-build-strip .build-slot,
+  .mobile-build-strip .empty-slot {
+    height: 21px;
+  }
+  .arena-controls > div {
+    font-size: 7px;
+  }
+  .catalog-tabs > button {
+    font-size: 9px;
+  }
+  .reward-summary {
+    font-size: 7px;
+  }
+  .reward-summary b {
+    font-size: 9px;
+  }
+  .reward-choice p {
+    font-size: 8px;
+  }
+}

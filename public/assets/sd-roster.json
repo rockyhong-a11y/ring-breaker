@@ -1,0 +1,188 @@
+{
+  "image": "sd-roster.png",
+  "width": 1536,
+  "height": 1024,
+  "frameWidth": 512,
+  "frameHeight": 512,
+  "columns": 3,
+  "rows": 2,
+  "order": [
+    "nova",
+    "raven",
+    "valkyrie",
+    "viper",
+    "atlas",
+    "onyx"
+  ],
+  "characters": {
+    "nova": {
+      "frame": 0,
+      "sourceSize": [
+        888,
+        444
+      ],
+      "sourceNeutral": [
+        37,
+        73,
+        213,
+        312
+      ],
+      "bodyBounds": [
+        103,
+        32,
+        306,
+        448
+      ],
+      "faceImage": "sd-face-nova.webp",
+      "headCrop": [
+        175,
+        32,
+        225,
+        205
+      ],
+      "bodyBoundsNote": "Frame-local; neutral body occupies y32..480. Use faceImage for enemy block portraits."
+    },
+    "raven": {
+      "frame": 1,
+      "sourceSize": [
+        888,
+        444
+      ],
+      "sourceNeutral": [
+        8,
+        53,
+        272,
+        363
+      ],
+      "bodyBounds": [
+        88,
+        32,
+        336,
+        448
+      ],
+      "faceImage": "sd-face-raven.webp",
+      "headCrop": [
+        168,
+        32,
+        245,
+        205
+      ],
+      "bodyBoundsNote": "Frame-local; neutral body occupies y32..480. Use faceImage for enemy block portraits."
+    },
+    "valkyrie": {
+      "frame": 2,
+      "sourceSize": [
+        888,
+        444
+      ],
+      "sourceNeutral": [
+        7,
+        3,
+        262,
+        440
+      ],
+      "bodyBounds": [
+        122,
+        32,
+        267,
+        448
+      ],
+      "faceImage": "sd-face-valkyrie.webp",
+      "headCrop": [
+        125,
+        32,
+        250,
+        205
+      ],
+      "bodyBoundsNote": "Frame-local; neutral body occupies y32..480. Use faceImage for enemy block portraits."
+    },
+    "viper": {
+      "frame": 3,
+      "sourceSize": [
+        888,
+        444
+      ],
+      "sourceNeutral": [
+        1,
+        6,
+        274,
+        429
+      ],
+      "bodyBounds": [
+        113,
+        32,
+        286,
+        448
+      ],
+      "faceImage": "sd-face-viper.webp",
+      "headCrop": [
+        156,
+        32,
+        235,
+        205
+      ],
+      "bodyBoundsNote": "Frame-local; neutral body occupies y32..480. Use faceImage for enemy block portraits."
+    },
+    "atlas": {
+      "frame": 4,
+      "sourceSize": [
+        888,
+        444
+      ],
+      "sourceNeutral": [
+        21,
+        22,
+        254,
+        408
+      ],
+      "bodyBounds": [
+        116,
+        32,
+        279,
+        448
+      ],
+      "faceImage": "sd-face-atlas.webp",
+      "headCrop": [
+        142,
+        32,
+        240,
+        205
+      ],
+      "bodyBoundsNote": "Frame-local; neutral body occupies y32..480. Use faceImage for enemy block portraits."
+    },
+    "onyx": {
+      "frame": 5,
+      "sourceSize": [
+        888,
+        444
+      ],
+      "sourceNeutral": [
+        8,
+        24,
+        261,
+        413
+      ],
+      "bodyBounds": [
+        114,
+        32,
+        283,
+        448
+      ],
+      "faceImage": "sd-face-onyx.webp",
+      "headCrop": [
+        170,
+        32,
+        225,
+        205
+      ],
+      "bodyBoundsNote": "Frame-local; neutral body occupies y32..480. Use faceImage for enemy block portraits."
+    }
+  },
+  "source": {
+    "repo": "rockyhong-a11y/slay-beach-volley",
+    "commit": "5ffed009aa658bf8ac86e25157b5637c0a42f346",
+    "originalRepo": "rockyhong-a11y/slay",
+    "originalCommit": "7a1bfbe261862f7c6a44981faf6ae9fb63eddb8c",
+    "license": "MIT, Copyright (c) 2026 Rocky Hong"
+  }
+}

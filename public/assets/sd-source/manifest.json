@@ -1,0 +1,198 @@
+{
+  "nova": {
+    "width": 1774,
+    "height": 887,
+    "frames": [
+      {
+        "x": 75,
+        "y": 147,
+        "width": 424,
+        "height": 621
+      },
+      {
+        "x": 648,
+        "y": 150,
+        "width": 449,
+        "height": 619
+      },
+      {
+        "x": 1261,
+        "y": 175,
+        "width": 437,
+        "height": 598
+      }
+    ],
+    "sourceSha256": "382c9cdd540fb721c61bba3515200d4e4eee538b3716d4215acaf1280e1f9bba",
+    "webpSha256": "781eeea9511e9f140afd2bbc60827031d8f956629aa7604b29c03f9f84ab3980",
+    "renderWidth": 888,
+    "renderHeight": 444
+  },
+  "raven": {
+    "width": 1774,
+    "height": 887,
+    "frames": [
+      {
+        "x": 17,
+        "y": 106,
+        "width": 541,
+        "height": 725
+      },
+      {
+        "x": 581,
+        "y": 108,
+        "width": 596,
+        "height": 723
+      },
+      {
+        "x": 1219,
+        "y": 113,
+        "width": 538,
+        "height": 718
+      }
+    ],
+    "sourceSha256": "cf5436983dcf6845990e41be124e9cd13d0a1d7c7bcca3900d49f9406983a49c",
+    "webpSha256": "b5ddda9c2fc9387b0815d8d2ba0163c0ea746f8df3427e4b790884d0dea6aaaf",
+    "renderWidth": 888,
+    "renderHeight": 444
+  },
+  "valkyrie": {
+    "width": 1774,
+    "height": 887,
+    "frames": [
+      {
+        "x": 14,
+        "y": 7,
+        "width": 523,
+        "height": 878
+      },
+      {
+        "x": 651,
+        "y": 8,
+        "width": 583,
+        "height": 874
+      },
+      {
+        "x": 1286,
+        "y": 38,
+        "width": 479,
+        "height": 845
+      }
+    ],
+    "sourceSha256": "dd894c275435bf0776fb85b8083e3164202e3e4a35f9649c269c79a2696734db",
+    "webpSha256": "07d3490538d21c16598b7bcb9be8639be37254d81976ae372f18d3669384c949",
+    "renderWidth": 888,
+    "renderHeight": 444
+  },
+  "viper": {
+    "width": 1774,
+    "height": 887,
+    "frames": [
+      {
+        "x": 2,
+        "y": 13,
+        "width": 547,
+        "height": 855
+      },
+      {
+        "x": 593,
+        "y": 21,
+        "width": 587,
+        "height": 843
+      },
+      {
+        "x": 1219,
+        "y": 35,
+        "width": 553,
+        "height": 827
+      }
+    ],
+    "sourceSha256": "e6af758a139c926352ca7a60b17e004184fd6fe2420da00b25ceb3a01d81f75a",
+    "webpSha256": "38aad27f0a5a695c1f74f68f9aa0536daf52e86339ac246c4dab43dbdeece5a1",
+    "renderWidth": 888,
+    "renderHeight": 444
+  },
+  "ember": {
+    "width": 1774,
+    "height": 887,
+    "frames": [
+      {
+        "x": 7,
+        "y": 47,
+        "width": 555,
+        "height": 792
+      },
+      {
+        "x": 565,
+        "y": 67,
+        "width": 623,
+        "height": 772
+      },
+      {
+        "x": 1193,
+        "y": 62,
+        "width": 573,
+        "height": 779
+      }
+    ],
+    "sourceSha256": "f00636734df0080293ccf565c7ff047f791d908428ab961a5adb793986a0ec85",
+    "webpSha256": "e956a6d6e548d6952bd50543c96e42f2e2ced14b0f81a5b538208b642a2e3d7a",
+    "renderWidth": 888,
+    "renderHeight": 444
+  },
+  "atlas": {
+    "width": 1774,
+    "height": 887,
+    "frames": [
+      {
+        "x": 42,
+        "y": 44,
+        "width": 506,
+        "height": 814
+      },
+      {
+        "x": 619,
+        "y": 43,
+        "width": 538,
+        "height": 814
+      },
+      {
+        "x": 1269,
+        "y": 46,
+        "width": 469,
+        "height": 811
+      }
+    ],
+    "sourceSha256": "3a4aa8361b13d277aae22710b65013e806579397a06b0a42419cb14e9dd8ff57",
+    "webpSha256": "a57bbb0104cb2c51e3cf1730054e0b8500c1fadf6960ad311218eea7757a1757",
+    "renderWidth": 888,
+    "renderHeight": 444
+  },
+  "onyx": {
+    "width": 1774,
+    "height": 887,
+    "frames": [
+      {
+        "x": 16,
+        "y": 48,
+        "width": 521,
+        "height": 824
+      },
+      {
+        "x": 590,
+        "y": 50,
+        "width": 545,
+        "height": 818
+      },
+      {
+        "x": 1189,
+        "y": 91,
+        "width": 568,
+        "height": 779
+      }
+    ],
+    "sourceSha256": "f6cca83106383875a248dc776ab017d2937a324ac45bd510693dc4c3f4f5eaeb",
+    "webpSha256": "b528f5952d313b82606e3888515d355d073448223f9d200d61e16606c05eb850",
+    "renderWidth": 888,
+    "renderHeight": 444
+  }
+}
