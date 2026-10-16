@@ -127,6 +127,8 @@ export function createArena(
 
   class ArenaScene extends Phaser.Scene {
     private venueArt!: Phaser.GameObjects.Graphics;
+    private venueTexture?: Phaser.GameObjects.RenderTexture;
+    private venueSize = "";
     private staticArt!: Phaser.GameObjects.Graphics;
     private targets!: Phaser.GameObjects.Graphics;
     private action!: Phaser.GameObjects.Graphics;
@@ -165,6 +167,9 @@ export function createArena(
       this.add.image(210, 322, "arena-mat").setDisplaySize(370, 566).setDepth(-1);
       this.staticArt = this.add.graphics().setDepth(0);
       this.drawRing();
+      this.staticArt.generateTexture("ring-apron",ARENA.width,ARENA.height);
+      this.add.image(0,0,"ring-apron").setOrigin(0).setDepth(0);
+      this.staticArt.destroy();
       this.resizeArena();
       this.scale.on("resize", this.resizeArena, this);
       this.events.once("shutdown", () => this.scale.off("resize", this.resizeArena, this));
@@ -376,16 +381,28 @@ export function createArena(
     }
 
     private resizeArena() {
-      // Tall phones already have natural HUD margins. Wider viewports reserve
-      // room above and below the mat so skill controls never hide the player.
-      const reserveHud = this.scale.width / this.scale.height > .64;
-      const fitHeight = reserveHud ? Math.max(220,this.scale.height-260) : this.scale.height;
-      const zoom = Math.min(this.scale.width / ARENA.width, fitHeight / ARENA.height);
-      const centreOffset = reserveHud ? 20 / zoom : 0;
+      const size = `${this.scale.width}:${this.scale.height}`;
+      if(this.venueSize === size) return;
+      this.venueSize = size;
+      // Fit the entire logical mat between real HUD edges whenever the normal
+      // fit would hide the player's feet (including the lowest legal y575).
+      const normalZoom = Math.min(this.scale.width/ARENA.width,this.scale.height/ARENA.height);
+      const parentTop = parent.getBoundingClientRect().top;
+      const hudBottom = Math.max(...[".hud-top",".xp-hud",".stage-pill"].map(selector =>
+        (document.querySelector(selector)?.getBoundingClientRect().bottom ?? 120)-parentTop,
+      ))+8;
+      const loadoutTop = (document.querySelector(".loadout-panel")?.getBoundingClientRect().top ?? this.scale.height-145)-parentTop-12;
+      const feetAtNormalFit = this.scale.height/2+(617-ARENA.height/2)*normalZoom;
+      const playerTopAtNormalFit = this.scale.height/2+(75-ARENA.height/2)*normalZoom;
+      const reserveHud = feetAtNormalFit > loadoutTop || playerTopAtNormalFit < hudBottom;
+      const fitHeight = reserveHud ? Math.max(80,loadoutTop-hudBottom) : this.scale.height;
+      const zoom = Math.min(this.scale.width/ARENA.width,fitHeight/ARENA.height);
+      const screenCentre = reserveHud ? (hudBottom+loadoutTop)/2 : this.scale.height/2;
+      const centreOffset = (this.scale.height/2-screenCentre)/zoom;
       this.cameras.main.setZoom(zoom).centerOn(ARENA.width / 2, ARENA.height / 2+centreOffset);
       const w = this.scale.width / zoom, h = this.scale.height / zoom;
       const l = (420 - w) / 2 - 5, t = (620 - h) / 2 - 5+centreOffset;
-      const g = this.venueArt.clear();
+      const g = this.venueArt.clear().setVisible(true);
       g.fillStyle(0x060d15).fillRect(l, t, w + 10, h + 10);
       // The venue extends into every aspect ratio; the gameplay mat never stretches.
       for (let y = Math.floor(t / 44) * 44; y < t + h; y += 44) {
@@ -423,6 +440,13 @@ export function createArena(
         g.fillStyle(0x111f29).fillRoundedRect(107,y-6,206,12,3);
         for(let x=113;x<310;x+=12) g.fillStyle(x%24?0xbdd87e:0x415967,.55).fillRect(x,y-2,7,3);
       }
+      // Thousands of venue paths are painted once per viewport size. Keeping
+      // them as live Graphics would tessellate the entire stadium every frame.
+      this.venueTexture?.destroy();
+      this.venueTexture = this.add.renderTexture(l,t,Math.ceil(w+10),Math.ceil(h+10))
+        .setOrigin(0).setDepth(-3);
+      this.venueTexture.draw(g,-l,-t);
+      g.clear().setVisible(false);
     }
 
     private drawRing() {
