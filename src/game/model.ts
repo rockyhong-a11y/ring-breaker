@@ -7,7 +7,21 @@ export interface SkillLevel {
   id: string;
   level: number;
 }
+export type Difficulty = 1 | 2 | 3;
+export type EntrySide = "top" | "left" | "right";
+export interface EntryTelegraph {
+  id: number;
+  x: number;
+  y: number;
+  side: EntrySide;
+  life: number;
+  maxLife: number;
+  boss?: boolean;
+}
 export interface ArenaState {
+  difficulty: Difficulty;
+  stageTier: number;
+  formation: string;
   mode: ArenaMode;
   wave: number;
   lives: number;
@@ -34,6 +48,7 @@ export interface ArenaState {
 }
 /** `width` is kept for existing saves: it now improves fire rate and pickup reach. */
 export interface MetaStats {
+  difficulty?: Difficulty;
   power: number;
   width: number;
   health: number;
@@ -57,6 +72,9 @@ export interface Ball {
   split: boolean;
 }
 export interface Brick {
+  entry: EntrySide;
+  role: "striker" | "tank" | "ranged";
+  formation: string;
   id: number;
   x: number;
   y: number;
@@ -129,7 +147,7 @@ export const ARENA = {
   right: 395,
   top: 39,
   paddleY: 554,
-  playerY: 565,
+  playerY: 535,
   radius: 6,
 };
 const FIXED_STEP = 1 / 120;
@@ -160,6 +178,8 @@ const clamp = (value: number, min: number, max: number) =>
 
 export class ArenaModel {
   mode: ArenaMode = "ready";
+  difficulty: Difficulty = 2;
+  telegraphs: EntryTelegraph[] = [];
   wave = 1;
   hp = 100;
   maxHp = 100;
@@ -168,7 +188,7 @@ export class ArenaModel {
   charge = 0;
   level = 1;
   xp = 0;
-  xpNext = 18;
+  xpNext = 24;
   kills = 0;
   time = 0;
   balls: Ball[] = [];
@@ -188,7 +208,11 @@ export class ArenaModel {
   events: ArenaEvent[] = [];
   private nextId = 1;
   private direction = 0;
-  private pointerTarget: number | undefined;
+  private verticalDirection = 0;
+  private pointerTarget: { x: number; y: number } | undefined;
+  private nextSide = 0;
+  private sidesSpawned = 0;
+  private sideCount = 0;
   private accumulator = 0;
   private waveTime = 0;
   private rowCount = 0;
@@ -211,6 +235,18 @@ export class ArenaModel {
     previewBoss.y = 290;
   }
 
+  get stageTier() {
+    return Math.ceil(this.wave / 2);
+  }
+  get formation() {
+    return ["쐐기 대형", "교차 압박", "분리 장벽", "철갑 관문", "포위 진형", "챔피언 포위"][this.wave - 1];
+  }
+  private get rowInterval() {
+    return 3.9 - this.difficulty * 0.28 - (this.stageTier - 1) * 0.3;
+  }
+  private get sideInterval() {
+    return 8.1 - this.difficulty * 0.75 - (this.stageTier - 1) * 0.65;
+  }
   get enemies() {
     return this.bricks;
   }
@@ -247,6 +283,9 @@ export class ArenaModel {
       (enemy) => (enemy.boss || enemy.elite) && enemy.hp > 0,
     );
     return {
+      difficulty: this.difficulty,
+      stageTier: this.stageTier,
+      formation: this.formation,
       mode: this.mode,
       wave: this.wave,
       lives: this.lives,
@@ -283,6 +322,7 @@ export class ArenaModel {
     runSeed = this.initialSeed,
   ) {
     this.seed = runSeed >>> 0;
+    this.difficulty = clamp(Math.floor(meta.difficulty ?? this.difficulty), 1, 3) as Difficulty;
     this.nextId = 1;
     this.meta = {
       power: clamp(Math.floor(meta.power || 0), 0, 20),
@@ -297,7 +337,7 @@ export class ArenaModel {
     this.charge = 0;
     this.level = 1;
     this.xp = 0;
-    this.xpNext = 18;
+    this.xpNext = 24;
     this.kills = 0;
     this.time = 0;
     this.accumulator = 0;
@@ -305,10 +345,14 @@ export class ArenaModel {
     this.invulnerable = 0;
     this.intermission = 0;
     this.player.x = 210;
+    this.player.y = ARENA.playerY;
     this.paddle.x = 210;
+    this.paddle.y = ARENA.playerY - 11;
     this.paddle.velocity = 0;
     this.pointerTarget = undefined;
     this.direction = 0;
+    this.verticalDirection = 0;
+    this.telegraphs = [];
     this.choices = [];
     this.rewardId = 0;
     this.activeSkills = [{ id: "fire", level: 1 }];
@@ -329,14 +373,28 @@ export class ArenaModel {
   resume() {
     if (this.mode === "paused") this.mode = "playing";
   }
-  move(direction: -1 | 0 | 1) {
-    this.direction = direction;
-    if (direction) this.pointerTarget = undefined;
+  setDifficulty(difficulty: Difficulty) {
+    if (this.mode !== "ready" && this.mode !== "gameover" && this.mode !== "victory") return;
+    if (![1, 2, 3].includes(difficulty)) return;
+    this.difficulty = difficulty;
+    if (this.mode === "ready") {
+      this.bricks = [];
+      this.prepareWave();
+    }
   }
-  point(x: number) {
-    if (!Number.isFinite(x)) return;
-    this.pointerTarget = x;
+  move(direction: -1 | 0 | 1, vertical: -1 | 0 | 1 = 0) {
+    this.direction = direction;
+    this.verticalDirection = vertical;
+    if (direction || vertical) this.pointerTarget = undefined;
+  }
+  point(x: number, y = this.player.y) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    this.pointerTarget = {
+      x: clamp(x, ARENA.left + 20, ARENA.right - 20),
+      y: clamp(y, ARENA.top + 36, ARENA.height - 45),
+    };
     this.direction = 0;
+    this.verticalDirection = 0;
   }
   /** Kept for controls from older saves. All ball weapons now fire automatically. */
   launch() {
@@ -381,6 +439,8 @@ export class ArenaModel {
       if (enemy.hp > 0) this.hit(enemy, enemy.hp);
     this.bricks = [];
     this.rowsSpawned = this.rowCount;
+    this.sidesSpawned = this.sideCount;
+    this.telegraphs = [];
     this.bossSpawned = true;
     this.choices = [];
     this.mode = "playing";
@@ -402,6 +462,7 @@ export class ArenaModel {
     this.balls = [];
     this.projectiles = [];
     this.pickups = [];
+    this.telegraphs = [];
     this.prepareWave();
     if ([3, 5, 6].includes(this.wave)) {
       this.spawnBoss();
@@ -452,65 +513,130 @@ export class ArenaModel {
   private prepareWave() {
     this.waveTime = 0;
     this.rowsSpawned = 0;
-    this.nextRow = 3.5;
+    this.nextRow = this.rowInterval;
+    this.nextSide = 3.2;
+    this.sidesSpawned = 0;
+    this.sideCount = 3 + this.stageTier + (this.difficulty === 3 ? 2 : 0);
+    this.telegraphs = [];
     this.bossSpawned = false;
-    this.rowCount = 5 + Math.ceil(this.wave / 2);
-    this.addRow(110);
+    this.rowCount = 5 + this.stageTier + (this.difficulty - 1);
+    if (this.mode === "playing" && this.wave > 1) {
+      const maxLife = 1.15;
+      this.telegraphs.push({ id: this.nextId++, x: 210, y: 65, side: "top", life: maxLife, maxLife });
+    } else this.addRow(100);
     this.emit({ kind: "wave", x: 210, y: 180, amount: this.wave });
   }
-  private addRow(y = 65) {
+  private makeEnemy(x: number, y: number, index: number, entry: EntrySide, tank = false) {
+    if (Math.hypot(x - this.player.x, y - this.player.y) < 78) {
+      const candidates = entry === "top"
+        ? [{ x: clamp(x - 95, 48, 372), y }, { x: clamp(x + 95, 48, 372), y }, { x, y: clamp(y - 95, 90, 515) }]
+        : [{ x, y: clamp(y - 95, 90, 515) }, { x, y: clamp(y + 95, 90, 515) }];
+      candidates.sort((a, b) => Math.hypot(b.x - this.player.x, b.y - this.player.y) - Math.hypot(a.x - this.player.x, a.y - this.player.y));
+      x = candidates[0].x; y = candidates[0].y;
+    }
+    const role = tank ? "tank" : (index + this.wave) % 4 === 0 ? "ranged" : "striker";
+    const healthScale = [0, 1.35, 1.75, 2.2][this.difficulty];
+    const hp = Math.round((8 + this.wave * 2.2 + (this.stageTier - 1) * 2) * healthScale * (role === "tank" ? 1.8 : 1));
+    const speedScale = [0, 1.15, 1.3, 1.45][this.difficulty];
+    this.bricks.push({
+      id: this.nextId++, x, y, width: role === "tank" ? 46 : 40,
+      height: role === "tank" ? 46 : 40,
+      hp, maxHp: hp, type: (index + this.wave - 1) % 6,
+      boss: false, elite: false, entry, role, formation: this.formation,
+      flash: 0, slow: 0, burn: 0, poison: 0, poisonStacks: 0,
+      burnDamage: 0, poisonDamage: 0,
+      speed: (15 + this.wave * 1.35 + (this.stageTier - 1) * 1.8) * speedScale * (role === "tank" ? 0.7 : entry === "top" ? 1 : 1.38),
+      attackIn: 2.7 + (index % 3) * 0.55,
+    });
+  }
+  private addRow(y = 80) {
     if (this.rowsSpawned >= this.rowCount) return;
     const row = this.rowsSpawned++;
-    const gap = (row + this.wave) % 6;
-    for (let col = 0; col < 6; col++) {
-      if (col === gap) continue;
-      const hp = 7 + this.wave * 3 + (row % 3 === 0 ? 2 : 0);
-      this.bricks.push({
-        id: this.nextId++,
-        x: 59 + col * 60,
-        y,
-        width: 44,
-        height: 44,
-        hp,
-        maxHp: hp,
-        type: (col + row + this.wave - 1) % 6,
-        boss: false,
-        elite: false,
-        flash: 0,
-        slow: 0,
-        burn: 0,
-        poison: 0,
-        poisonStacks: 0,
-        burnDamage: 0,
-        poisonDamage: 0,
-        speed: 12 + this.wave * 1.35,
-        attackIn: 0,
-      });
+    const offset = row % 2 === 0 ? -1 : 1;
+    const positions: { x: number; y: number; tank?: boolean }[] = [];
+    if (this.wave === 1) {
+      // A chevron leaves two side routes and a central pocket between its arms.
+      for (let col = 0; col < 6; col++)
+        positions.push({ x: 65 + col * 58, y: y + (2.5 - Math.abs(col - 2.5)) * 23 });
+    } else if (this.wave === 2) {
+      // Interleaving ranks have no unbroken vertical safe lane.
+      for (let col = 0; col < 7; col++)
+        if ((col + row) % 4 !== 0)
+          positions.push({ x: 60 + col * 50, y: y + ((col + row) % 2) * 55 });
+      positions.push({ x: 210 + offset * 48, y: y + 105 });
+    } else if (this.wave === 3) {
+      // Twin walls frame a center passage, with a guard behind the opening.
+      for (const x of [63, 112, 308, 357])
+        positions.push({ x, y }, { x, y: y + 51 });
+      positions.push({ x: 210 + offset * 25, y: y + 103, tank: true });
+    } else if (this.wave === 4) {
+      // Armored gate pivots its opening between the left and right half.
+      for (let col = 0; col < 7; col++)
+        if (col !== (row % 2 === 0 ? 1 : 5))
+          positions.push({ x: 60 + col * 50, y: y + (col % 2) * 45, tank: col === 2 || col === 4 });
+      positions.push({ x: row % 2 === 0 ? 310 : 110, y: y + 94, tank: true });
+    } else if (this.wave === 5) {
+      // Curved flank columns close around a shallow center while sides rush in.
+      for (let col = 0; col < 7; col++)
+        positions.push({ x: 60 + col * 50, y: y + Math.abs(3 - col) * 24, tank: col === 0 || col === 6 });
+      positions.push({ x: 160, y: y + 110 }, { x: 260, y: y + 110 });
+    } else {
+      // The champion's escort forms staggered horns and an armored rear rank.
+      for (const x of [62, 112, 308, 358])
+        positions.push({ x, y }, { x, y: y + 54, tank: true });
+      positions.push({ x: 160, y: y + 108 }, { x: 260, y: y + 108 });
     }
+    if (this.difficulty >= 2)
+      positions.push({ x: 210 + offset * 105, y: y + 157 });
+    if (this.difficulty === 3)
+      positions.push({ x: 210 - offset * 105, y: y + 157, tank: this.stageTier > 1 });
+    for (let index = 0; index < positions.length; index++) {
+      const position = positions[index];
+      this.makeEnemy(position.x, position.y, index + row, "top", position.tank);
+    }
+  }
+  private warnSide() {
+    const side: EntrySide = this.sidesSpawned % 2 === 0 ? "left" : "right";
+    const x = side === "left" ? ARENA.left + 23 : ARENA.right - 23;
+    // Warn a safe distance away. The displayed lane is exactly where its squad arrives.
+    const lanes = [155, 265, 375, 480].filter((y) => Math.hypot(x - this.player.x, y - this.player.y) >= 145);
+    const y = lanes[Math.floor(this.random() * lanes.length)] ?? (this.player.y > 310 ? 155 : 480);
+    const maxLife = 1.4;
+    this.telegraphs.push({ id: this.nextId++, x, y, side, life: maxLife, maxLife });
+    this.sidesSpawned++;
+  }
+  private tickEntries(dt: number) {
+    for (const warning of this.telegraphs) {
+      warning.life -= dt;
+      if (warning.life > 0) continue;
+      if (warning.side === "top") {
+        if (warning.boss) this.spawnBoss();
+        else this.addRow();
+        continue;
+      }
+      const count = 2 + (this.stageTier === 3 ? 1 : 0) + (this.difficulty === 3 ? 1 : 0);
+      for (let i = 0; i < count; i++) {
+        const y = clamp(warning.y + (i - (count - 1) / 2) * 44, 95, 510);
+        this.makeEnemy(warning.x, y, i + this.sidesSpawned, warning.side, i === 0 && this.stageTier > 1);
+      }
+    }
+    this.telegraphs = this.telegraphs.filter((warning) => warning.life > 0);
   }
   private spawnBoss() {
     const champion = this.wave === 6;
-    const hp = champion ? 1100 : this.wave === 5 ? 400 : 230;
+    const hp = Math.round((champion ? 1150 : this.wave === 5 ? 480 : 285) * [0, 1.15, 1.4, 1.7][this.difficulty]);
+    const x = Math.hypot(210 - this.player.x, 102 - this.player.y) < 125
+      ? this.player.x > 210 ? 95 : 325 : 210;
     this.bricks.push({
-      id: this.nextId++,
-      x: 210,
-      y: 105,
-      width: champion ? 92 : 76,
-      height: champion ? 116 : 94,
-      hp,
-      maxHp: hp,
-      type: champion ? 5 : this.wave === 5 ? 4 : 2,
-      boss: champion,
-      elite: !champion,
-      flash: 0,
-      slow: 0,
-      burn: 0,
-      poison: 0,
-      poisonStacks: 0,
-      burnDamage: 0,
-      poisonDamage: 0,
-      speed: champion ? 3.3 : 4.3,
-      attackIn: 2.5,
+      id: this.nextId++, x, y: 102,
+      width: champion ? 92 : 76, height: champion ? 116 : 94,
+      hp, maxHp: hp, type: champion ? 5 : this.wave === 5 ? 4 : 2,
+      boss: champion, elite: !champion,
+      entry: "top", role: "tank", formation: this.formation,
+      flash: 0, slow: 0, burn: 0, poison: 0, poisonStacks: 0,
+      burnDamage: 0, poisonDamage: 0,
+      speed: (champion ? 14 : 12) * (1 + this.difficulty * 0.12),
+      attackIn: 1.8,
     });
   }
   private nearestEnemy(x: number, y: number, exclude?: number) {
@@ -555,7 +681,7 @@ export class ArenaModel {
     if (this.mode !== "playing" || this.xp < this.xpNext) return;
     this.xp -= this.xpNext;
     this.level++;
-    this.xpNext = 18 + (this.level - 1) * 9;
+    this.xpNext = 24 + (this.level - 1) * 10;
     const eligible = UPGRADE_DEFS.filter((definition) => {
       if (definition.id === "heal") return this.hp < this.maxHp * 0.8;
       const owned = this.skill(definition.id);
@@ -594,15 +720,24 @@ export class ArenaModel {
     this.time += dt;
     this.invulnerable = Math.max(0, this.invulnerable - dt);
     const oldX = this.player.x;
-    if (this.pointerTarget !== undefined)
-      this.player.x += clamp(
-        this.pointerTarget - this.player.x,
-        -760 * dt,
-        760 * dt,
-      );
-    else this.player.x += this.direction * 330 * dt;
+    if (this.pointerTarget) {
+      const dx = this.pointerTarget.x - this.player.x;
+      const dy = this.pointerTarget.y - this.player.y;
+      const distance = Math.hypot(dx, dy);
+      const movement = Math.min(distance, 360 * dt);
+      if (distance > 0) {
+        this.player.x += dx / distance * movement;
+        this.player.y += dy / distance * movement;
+      }
+    } else {
+      const magnitude = Math.hypot(this.direction, this.verticalDirection) || 1;
+      this.player.x += this.direction / magnitude * 330 * dt;
+      this.player.y += this.verticalDirection / magnitude * 330 * dt;
+    }
     this.player.x = clamp(this.player.x, ARENA.left + 20, ARENA.right - 20);
+    this.player.y = clamp(this.player.y, ARENA.top + 36, ARENA.height - 45);
     this.paddle.x = this.player.x;
+    this.paddle.y = this.player.y - 11;
     this.paddle.velocity = (this.player.x - oldX) / dt;
     for (const effect of this.fx) effect.life -= dt;
     this.fx = this.fx.filter((effect) => effect.life > 0);
@@ -615,21 +750,29 @@ export class ArenaModel {
         this.bricks = [];
         this.balls = [];
         this.projectiles = [];
+        this.telegraphs = [];
         this.prepareWave();
       }
       return;
     }
     this.waveTime += dt;
     if (this.waveTime >= this.nextRow && this.rowsSpawned < this.rowCount) {
-      this.addRow();
-      this.nextRow += 3.5;
+      const maxLife = 1.15;
+      this.telegraphs.push({ id: this.nextId++, x: 210, y: 65, side: "top", life: maxLife, maxLife });
+      this.nextRow += this.rowInterval;
     }
+    if (this.waveTime >= this.nextSide && this.sidesSpawned < this.sideCount) {
+      this.warnSide();
+      this.nextSide += this.sideInterval;
+    }
+    this.tickEntries(dt);
     if (
       [3, 5, 6].includes(this.wave) &&
       !this.bossSpawned &&
       this.waveTime >= 7
     ) {
-      this.spawnBoss();
+      const maxLife = 1.6;
+      this.telegraphs.push({ id: this.nextId++, x: 210, y: 65, side: "top", life: maxLife, maxLife, boss: true });
       this.bossSpawned = true;
     }
     this.tickEnemies(dt);
@@ -684,32 +827,40 @@ export class ArenaModel {
         );
       } else enemy.poisonStacks = 0;
       if (enemy.hp <= 0) continue;
-      enemy.y += enemy.speed * (enemy.slow > 0 ? 0.34 : 1) * dt;
+      const dx = this.player.x - enemy.x;
+      const dy = this.player.y - enemy.y;
+      const distance = Math.hypot(dx, dy) || 1;
+      const slow = enemy.slow > 0 ? 0.34 : 1;
+      const enraged = enemy.boss && enemy.hp < enemy.maxHp * 0.5;
+      const movement = enemy.speed * slow * (enraged ? 1.4 : 1) * dt;
       enemy.slow = Math.max(0, enemy.slow - dt);
-      if (enemy.boss || enemy.elite) {
-        enemy.x = 210 + Math.sin(this.waveTime * 0.6) * (enemy.boss ? 115 : 90);
+      if (enemy.entry === "top" && enemy.y < 210 && !enemy.boss && !enemy.elite) {
+        // Preserve the silhouette on entry; ranks break into pursuit inside the ring.
+        enemy.y += movement;
+        enemy.x += dx / distance * movement * 0.18;
+      } else {
+        const rangedStop = enemy.role === "ranged" && distance < 190;
+        enemy.x += dx / distance * movement * (rangedStop ? -0.25 : 1);
+        enemy.y += dy / distance * movement * (rangedStop ? -0.25 : 1);
+      }
+      enemy.x = clamp(enemy.x, ARENA.left + enemy.width / 2, ARENA.right - enemy.width / 2);
+      enemy.y = clamp(enemy.y, ARENA.top + enemy.height / 2, ARENA.height - enemy.height / 2 - 12);
+      if (enemy.boss || enemy.elite || enemy.role === "ranged") {
         enemy.attackIn -= dt;
         if (enemy.attackIn <= 0) {
           this.enemyShoot(enemy);
-          enemy.attackIn = enemy.boss
-            ? enemy.hp < enemy.maxHp * 0.5
-              ? 1.5
-              : 2
-            : 3.4;
+          enemy.attackIn = (enemy.boss ? (enraged ? 1.05 : 1.65) : enemy.elite ? 2.2 : 3.9)
+            / (1 + (this.difficulty - 1) * 0.12 + (this.stageTier - 1) * 0.1);
         }
       }
-      const bottom = enemy.y + enemy.height / 2;
-      if (
-        bottom > this.player.y - 20 &&
-        Math.abs(enemy.x - this.player.x) < enemy.width / 2 + 16
-      ) {
-        this.takeDamage(enemy.boss || enemy.elite ? 28 : 18);
-        if (!enemy.boss && !enemy.elite) enemy.hp = 0;
-        else enemy.y -= 40;
-      } else if (enemy.y - enemy.height / 2 > ARENA.height - 12) {
-        enemy.hp = 0;
-        this.takeDamage(9);
-        this.combo = 0;
+      // Circle/AABB collision works from every direction, including below the player.
+      const closestX = clamp(this.player.x, enemy.x - enemy.width / 2, enemy.x + enemy.width / 2);
+      const closestY = clamp(this.player.y, enemy.y - enemy.height / 2, enemy.y + enemy.height / 2);
+      if (Math.hypot(this.player.x - closestX, this.player.y - closestY) < 16) {
+        this.takeDamage((enemy.boss || enemy.elite ? 27 : enemy.role === "tank" ? 20 : 16) + this.difficulty * 2 + this.stageTier);
+        // Opponents remain threats after contact; bounce them off the player briefly.
+        enemy.x = clamp(enemy.x - dx / distance * 42, ARENA.left + enemy.width / 2, ARENA.right - enemy.width / 2);
+        enemy.y = clamp(enemy.y - dy / distance * 42, ARENA.top + enemy.height / 2, ARENA.height - enemy.height / 2 - 12);
       }
     }
   }
@@ -727,8 +878,8 @@ export class ArenaModel {
             : this.speed;
     this.balls.push({
       id: this.nextId++,
-      x: this.player.x,
-      y: this.player.y - 24,
+      x: this.player.x + Math.cos(angle) * 23,
+      y: this.player.y + Math.sin(angle) * 23,
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       attached: false,
@@ -744,7 +895,7 @@ export class ArenaModel {
               ? 4
               : 6,
       damage: this.damage * (kind === "basic" ? 1 : 1.15 + level * 0.22),
-      life: 4.6 + this.skill("ricochet"),
+      life: 3 + this.skill("ricochet") * 0.55,
       canPierce:
         kind === "laser" ? 2 + level : kind === "boomerang" ? 3 + level : 0,
       bounces: 0,
@@ -795,6 +946,11 @@ export class ArenaModel {
     if (ball.y < ARENA.top + radius) {
       ball.y = ARENA.top + radius;
       ball.vy = Math.abs(ball.vy);
+      bounced = true;
+    }
+    if (ball.y > ARENA.height - 15 - radius) {
+      ball.y = ARENA.height - 15 - radius;
+      ball.vy = -Math.abs(ball.vy);
       bounced = true;
     }
     if (bounced) {
@@ -970,7 +1126,7 @@ export class ArenaModel {
         100,
         this.charge + (enemy.boss || enemy.elite ? 20 : 2),
       );
-      const value = enemy.boss ? 140 : enemy.elite ? 70 : 6 + this.wave;
+      const value = enemy.boss ? 85 : enemy.elite ? 40 : 3 + Math.floor(this.wave / 2);
       if (this.pickups.length >= 100) this.pickups[0].value += value;
       else
         this.pickups.push({
@@ -1005,15 +1161,15 @@ export class ArenaModel {
       : [0];
     for (const offset of spread) {
       if (this.projectiles.length >= 70) break;
-      const speed = enemy.boss ? 145 : 125;
+      const speed = (enemy.boss ? 155 : enemy.elite ? 145 : 130) * (1 + this.difficulty * 0.08 + (this.stageTier - 1) * 0.05);
       this.projectiles.push({
         id: this.nextId++,
-        x: enemy.x,
-        y: enemy.y + enemy.height / 2,
+        x: enemy.x + Math.cos(baseAngle + offset) * (enemy.width / 2 + 10),
+        y: enemy.y + Math.sin(baseAngle + offset) * (enemy.height / 2 + 10),
         vx: Math.cos(baseAngle + offset) * speed,
         vy: Math.sin(baseAngle + offset) * speed,
         radius: enemy.boss ? 8 : 7,
-        damage: enemy.boss ? 22 : 12,
+        damage: (enemy.boss ? 19 : enemy.elite ? 13 : 10) + this.difficulty * 2,
         life: 7,
       });
     }
@@ -1035,6 +1191,7 @@ export class ArenaModel {
       (bullet) =>
         bullet.life > 0 &&
         bullet.y < ARENA.height + 20 &&
+        bullet.y > ARENA.top - 30 &&
         bullet.x > 0 &&
         bullet.x < ARENA.width,
     );
@@ -1102,6 +1259,8 @@ export class ArenaModel {
       this.mode !== "playing" ||
       this.bricks.some((enemy) => enemy.hp > 0) ||
       this.rowsSpawned < this.rowCount ||
+      this.sidesSpawned < this.sideCount ||
+      this.telegraphs.length > 0 ||
       ([3, 5, 6].includes(this.wave) && !this.bossSpawned)
     )
       return;

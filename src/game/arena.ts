@@ -6,9 +6,10 @@ import {
   type MetaStats,
   type ArenaEvent,
   type Brick,
+  type Difficulty,
 } from "./model";
 
-export type { ArenaState, ArenaMode } from "./model";
+export type { ArenaState, ArenaMode, Difficulty } from "./model";
 
 interface ArenaCallbacks {
   onChange: (state: ArenaState) => void;
@@ -23,7 +24,9 @@ export interface ArenaController {
   launch(): void;
   chooseUpgrade(id: string): void;
   finisher(): void;
-  move(direction: -1 | 0 | 1): void;
+  move(horizontal: -1 | 0 | 1, vertical?: -1 | 0 | 1): void;
+  point(x: number, y?: number): void;
+  setDifficulty(difficulty: Difficulty): void;
   getState(): ArenaState;
   destroy(): void;
   debug?: {
@@ -77,6 +80,7 @@ interface Trail {
 }
 interface EnemyArt {
   image: Phaser.GameObjects.Image;
+  frame?: Phaser.GameObjects.Image;
   hp: Phaser.GameObjects.Text;
   label?: Phaser.GameObjects.Text;
 }
@@ -94,7 +98,7 @@ export function createArena(
   let lastMode = model.mode;
   let lastReward = "";
   let lastNotification = 0;
-  let clearInput = () => model.move(0);
+  let clearInput = () => model.move(0, 0);
   const disposers: Array<() => void> = [];
 
   function emit(force = false) {
@@ -122,12 +126,14 @@ export function createArena(
   }
 
   class ArenaScene extends Phaser.Scene {
+    private venueArt!: Phaser.GameObjects.Graphics;
     private staticArt!: Phaser.GameObjects.Graphics;
     private targets!: Phaser.GameObjects.Graphics;
     private action!: Phaser.GameObjects.Graphics;
     private effects!: Phaser.GameObjects.Graphics;
     private waveLabel!: Phaser.GameObjects.Text;
     private cueLabel!: Phaser.GameObjects.Text;
+    private entryLabel!: Phaser.GameObjects.Text;
     private hero!: Phaser.GameObjects.Image;
     private enemies = new Map<number, EnemyArt>();
     private particles: Particle[] = [];
@@ -154,8 +160,14 @@ export function createArena(
     }
 
     create() {
+      this.venueArt = this.add.graphics().setDepth(-3);
+      this.createDetailTextures();
+      this.add.image(210, 322, "arena-mat").setDisplaySize(370, 566).setDepth(-1);
       this.staticArt = this.add.graphics().setDepth(0);
       this.drawRing();
+      this.resizeArena();
+      this.scale.on("resize", this.resizeArena, this);
+      this.events.once("shutdown", () => this.scale.off("resize", this.resizeArena, this));
       this.targets = this.add.graphics().setDepth(10);
       this.action = this.add.graphics().setDepth(20);
       this.effects = this.add.graphics().setDepth(30);
@@ -175,14 +187,25 @@ export function createArena(
         .setDepth(40)
         .setVisible(false);
       this.cueLabel = this.add
-        .text(210, 607, "좌우로 드래그 · 자동 발사", {
+        .text(210, 610, "상하좌우 드래그 · 자동 발사", {
           fontFamily: "Arial, sans-serif",
           fontSize: "9px",
           color: "#8c9bad",
           letterSpacing: 1,
         })
         .setOrigin(0.5)
-        .setDepth(40);
+        .setDepth(40)
+        .setVisible(false);
+      this.entryLabel = this.add.text(210,90,"BOSS INCOMING",{
+        fontFamily:"monospace",fontSize:"7px",fontStyle:"bold",color:"#ffd38e",
+        backgroundColor:"#281c20",padding:{left:7,right:7,top:4,bottom:4},letterSpacing:1,
+      }).setOrigin(.5).setDepth(40).setVisible(false);
+      const resizeObserver = new ResizeObserver(() => {
+        this.scale.getParentBounds();
+        this.scale.refresh();
+      });
+      resizeObserver.observe(parent);
+      disposers.push(() => resizeObserver.disconnect());
       this.installInput();
       this.drawFrame(0);
       emit(true);
@@ -206,9 +229,9 @@ export function createArena(
       canvas.setAttribute("role", "application");
       canvas.setAttribute(
         "aria-label",
-        "링 브레이커 경기장. 드래그나 좌우 방향키로 레슬러를 움직이세요. 공은 자동으로 발사됩니다.",
+        "링 브레이커 경기장. 상하좌우 드래그나 방향키, WASD로 레슬러를 움직이세요. 공은 자동으로 발사됩니다.",
       );
-      canvas.style.touchAction = "pan-y pinch-zoom";
+      canvas.style.touchAction = "pinch-zoom";
       canvas.style.userSelect = "none";
       canvas.style.setProperty("-webkit-user-select", "none");
       canvas.style.setProperty("-webkit-touch-callout", "none");
@@ -225,9 +248,11 @@ export function createArena(
       const position = (event: PointerEvent) => {
         if (dialogOpen() || model.mode !== "playing") return;
         const bounds = canvas.getBoundingClientRect();
-        model.point(
-          ((event.clientX - bounds.left) / bounds.width) * ARENA.width,
+        const world = this.cameras.main.getWorldPoint(
+          ((event.clientX - bounds.left) / bounds.width) * this.scale.width,
+          ((event.clientY - bounds.top) / bounds.height) * this.scale.height,
         );
+        model.point(world.x, world.y);
       };
       const down = (event: PointerEvent) => {
         if (!event.isPrimary || dialogOpen() || model.mode !== "playing")
@@ -241,8 +266,7 @@ export function createArena(
         }
       };
       const move = (event: PointerEvent) => {
-        if (activePointer === event.pointerId || event.pointerType === "mouse")
-          position(event);
+        if (activePointer === event.pointerId) position(event);
       };
       const up = (event: PointerEvent) => {
         if (activePointer === event.pointerId) activePointer = undefined;
@@ -262,7 +286,7 @@ export function createArena(
       clearInput = () => {
         pressed.clear();
         activePointer = undefined;
-        model.move(0);
+        model.move(0, 0);
       };
       const key = (event: KeyboardEvent) => {
         if (dialogOpen()) {
@@ -276,13 +300,15 @@ export function createArena(
         )
           return;
         const normalized = event.key.toLowerCase();
-        if (!["arrowleft", "arrowright", "a", "d"].includes(normalized)) return;
+        if (!["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s"].includes(normalized)) return;
         if (model.mode === "playing") event.preventDefault();
         if (event.type === "keydown") pressed.add(normalized);
         else pressed.delete(normalized);
         const left = pressed.has("arrowleft") || pressed.has("a");
         const right = pressed.has("arrowright") || pressed.has("d");
-        model.move(left === right ? 0 : left ? -1 : 1);
+        const up = pressed.has("arrowup") || pressed.has("w");
+        const down = pressed.has("arrowdown") || pressed.has("s");
+        model.move(left === right ? 0 : left ? -1 : 1, up === down ? 0 : up ? -1 : 1);
       };
       const blur = () => clearInput();
       window.addEventListener("keydown", key);
@@ -295,98 +321,176 @@ export function createArena(
       });
     }
 
+    private createDetailTextures() {
+      // Reusable canvas materials keep metal and fabric detail out of the frame loop.
+      const mat = this.textures.createCanvas("arena-mat", 512, 768)!;
+      const c = mat.context;
+      const shade = c.createRadialGradient(256, 350, 15, 256, 350, 450);
+      shade.addColorStop(0, "#233a43");
+      shade.addColorStop(0.55, "#1a2d36");
+      shade.addColorStop(1, "#10212d");
+      c.fillStyle = shade;
+      c.fillRect(0, 0, 512, 768);
+      let seed = 431;
+      const random = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+      for (let i = 0; i < 10500; i++) {
+        const x = random() * 512, y = random() * 768;
+        c.fillStyle = i % 2 ? "rgba(180,220,217,.022)" : "rgba(0,5,10,.04)";
+        c.fillRect(x, y, 1 + random() * 2, 1);
+      }
+      c.lineWidth = 1;
+      c.strokeStyle = "rgba(182,209,207,.045)";
+      for (let x = 0; x < 512; x += 64) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, 768); c.stroke(); }
+      for (let y = 0; y < 768; y += 64) { c.beginPath(); c.moveTo(0, y); c.lineTo(512, y); c.stroke(); }
+      // Worn canvas seams, boot scuffs, and a quiet centre emblem.
+      for (let i = 0; i < 115; i++) {
+        const x = 25 + random() * 462, y = 25 + random() * 718;
+        c.strokeStyle = "rgba(4,11,16,.11)";
+        c.lineWidth = 1 + random() * 3;
+        c.beginPath(); c.ellipse(x, y, 2 + random() * 6, 5 + random() * 11, random() * 6, 0, Math.PI * 1.3); c.stroke();
+      }
+      c.save(); c.translate(256, 385); c.rotate(-0.10);
+      c.strokeStyle = "rgba(159,188,179,.075)"; c.lineWidth = 4;
+      c.beginPath(); c.arc(0, 0, 112, 0, Math.PI * 2); c.stroke();
+      c.beginPath(); c.arc(0, 0, 103, 0, Math.PI * 2); c.stroke();
+      c.font = "900 102px Impact, Arial Black, sans-serif";
+      c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillStyle = "rgba(173,201,180,.065)"; c.fillText("RB", 0, 1);
+      c.restore(); mat.refresh();
+      const frame = this.textures.createCanvas("enemy-frame", 128, 128)!;
+      const f = frame.context;
+      const metal = f.createLinearGradient(0, 0, 128, 128);
+      metal.addColorStop(0, "#a8b8b0"); metal.addColorStop(.17, "#4d6265");
+      metal.addColorStop(.45, "#1c303b"); metal.addColorStop(.75, "#344b55"); metal.addColorStop(1, "#7d8e88");
+      f.fillStyle = "#07121c"; f.beginPath(); f.roundRect(0, 0, 128, 128, 15); f.fill();
+      f.fillStyle = metal; f.beginPath(); f.roundRect(3, 2, 122, 122, 13); f.fill();
+      f.clearRect(12, 12, 104, 101);
+      f.strokeStyle = "rgba(230,245,221,.4)"; f.lineWidth = 1; f.beginPath(); f.roundRect(5, 4, 118, 118, 10); f.stroke();
+      f.strokeStyle = "#0a1520"; f.lineWidth = 3; f.strokeRect(11, 11, 106, 103);
+      for (const x of [7, 120]) for (const y of [7, 120]) {
+        f.fillStyle = "#07121b"; f.beginPath(); f.arc(x, y, 3, 0, Math.PI * 2); f.fill();
+        f.fillStyle = "#b0beb1"; f.beginPath(); f.arc(x-.5, y-.6, 1.5, 0, Math.PI * 2); f.fill();
+      }
+      for (const x of [22, 38, 54, 70, 86, 102]) { f.fillStyle = "#cbb86c"; f.fillRect(x, 120, 7, 2); }
+      frame.refresh();
+    }
+
+    private resizeArena() {
+      // Tall phones already have natural HUD margins. Wider viewports reserve
+      // room above and below the mat so skill controls never hide the player.
+      const reserveHud = this.scale.width / this.scale.height > .64;
+      const fitHeight = reserveHud ? Math.max(220,this.scale.height-260) : this.scale.height;
+      const zoom = Math.min(this.scale.width / ARENA.width, fitHeight / ARENA.height);
+      const centreOffset = reserveHud ? 20 / zoom : 0;
+      this.cameras.main.setZoom(zoom).centerOn(ARENA.width / 2, ARENA.height / 2+centreOffset);
+      const w = this.scale.width / zoom, h = this.scale.height / zoom;
+      const l = (420 - w) / 2 - 5, t = (620 - h) / 2 - 5+centreOffset;
+      const g = this.venueArt.clear();
+      g.fillStyle(0x060d15).fillRect(l, t, w + 10, h + 10);
+      // The venue extends into every aspect ratio; the gameplay mat never stretches.
+      for (let y = Math.floor(t / 44) * 44; y < t + h; y += 44) {
+        for (let x = Math.floor(l / 52) * 52; x < l + w; x += 52) {
+          const outside = x < 5 || x > 410 || y < 22 || y > 620;
+          if (!outside) continue;
+          g.fillStyle(0x101c27).fillRoundedRect(x+2, y+2, 48, 40, 3);
+          g.lineStyle(1, 0x243441, .55).strokeRoundedRect(x+3, y+3, 46, 38, 2);
+          g.fillStyle(0x7a8c8e,.24).fillCircle(x+7,y+7,1).fillCircle(x+45,y+37,1);
+          g.lineStyle(1,0x33434a,.2).lineBetween(x+10,y+32,x+38,y+8);
+        }
+      }
+      // Tiered spectator seats and overhead fixtures beyond the ring apron.
+      for (const side of [-1, 1]) {
+        const start = side < 0 ? l + 10 : 442;
+        const end = side < 0 ? -22 : l + w;
+        for (let x = start; x < end; x += 25) {
+          for (let y = t + 30; y < t + h - 20; y += 32) {
+            if (y > 145 && y < 225 || y > 355 && y < 435) continue;
+            g.fillStyle(0x172d37,.8).fillRoundedRect(x-6,y,15,13,3);
+            g.fillStyle(Math.floor(x+y)%3 ? 0x3e4c51 : 0x6d6253,.7).fillCircle(x+1,y-2,4);
+            g.fillStyle(0x050c13,.65).fillRect(x-8,y+12,20,3);
+          }
+        }
+      }
+      for (const x of [l+20,l+w-20]) {
+        g.lineStyle(3,0x30434b,.5).lineBetween(x,t,x,t+h);
+        for(let y=t+20;y<t+h;y+=100) {
+          g.fillStyle(0x101a22).fillRoundedRect(x-9,y,18,36,4);
+          g.fillStyle(0x91dad0,.55).fillRoundedRect(x-3,y+6,6,22,2);
+          g.fillStyle(0x76dbbf,.025).fillTriangle(x,y+13,210,y-90,210,y+120);
+        }
+      }
+      for (const y of [t+32,t+h-32]) {
+        g.fillStyle(0x111f29).fillRoundedRect(107,y-6,206,12,3);
+        for(let x=113;x<310;x+=12) g.fillStyle(x%24?0xbdd87e:0x415967,.55).fillRect(x,y-2,7,3);
+      }
+    }
+
     private drawRing() {
       const g = this.staticArt;
-      g.fillStyle(0x0a111e).fillRect(0, 0, 420, 620);
-      // Tiny spectators sit outside the ropes; the centre stays clear for projectiles.
-      for (let i = 0; i < 38; i++) {
-        const x = 6 + i * 11;
-        g.fillStyle(i % 5 === 0 ? 0x59674e : 0x283243).fillCircle(
-          x,
-          37 + (i % 3) * 3,
-          3,
-        );
-        g.fillStyle(0x182332).fillRoundedRect(x - 4, 40 + (i % 3) * 3, 8, 8, 2);
+      // Layered apron, welded metal corners, rope shadows and stitched canvas.
+      g.lineStyle(16,0x030911,.7).strokeRoundedRect(17, 37, 386, 576, 8);
+      g.lineStyle(8,0x0d1b25).strokeRoundedRect(20, 38, 380, 570, 6);
+      g.lineStyle(8,0x0c1721,.8).strokeRect(25,43,370,560);
+      g.lineStyle(1,0x476168,.4).strokeRect(29,47,362,551);
+      for (let y=58;y<596;y+=10) {
+        g.lineStyle(.8,0x738d8c,.14).lineBetween(28,y,30,y+3);
+        g.lineStyle(.8,0x738d8c,.14).lineBetween(390,y,392,y+3);
       }
-      g.fillStyle(0x060d17).fillRoundedRect(15, 49, 390, 552, 8);
-      g.fillStyle(0x202c3b).fillRoundedRect(23, 53, 374, 543, 6);
-      g.fillStyle(0x14202f).fillRect(31, 61, 358, 527);
-      g.lineStyle(1, 0x5b7187, 0.055);
-      for (let y = 63; y < 590; y += 28) g.lineBetween(31, y, 389, y);
-      for (let x = 31; x < 390; x += 28) g.lineBetween(x, 62, x, 588);
-      // A wide central monogram recalls a real wrestling canvas.
-      this.add
-        .text(210, 346, "RB", {
-          fontFamily: "Impact, Arial Black, sans-serif",
-          fontSize: "120px",
-          color: "#8193a7",
-          fontStyle: "bold",
-        })
-        .setOrigin(0.5)
-        .setAlpha(0.035)
-        .setAngle(-8)
-        .setDepth(1);
-      this.add
-        .text(210, 410, "UNDERGROUND WRESTLING CLUB", {
-          fontFamily: "monospace",
-          fontSize: "7px",
-          color: "#6b7f97",
-          letterSpacing: 1.7,
-        })
-        .setOrigin(0.5)
-        .setAlpha(0.2)
-        .setDepth(1);
       for (let i = 0; i < 3; i++) {
-        const inset = 11 + i * 5;
-        g.lineStyle(2.5, 0x030910, 0.8).strokeRect(
-          inset + 1,
-          55 + i * 5 + 2,
-          420 - inset * 2,
-          539 - i * 10,
-        );
-        g.lineStyle(
-          i === 1 ? 1.7 : 1,
-          i === 1 ? 0xe28555 : 0x687e8e,
-          i === 1 ? 0.75 : 0.45,
-        ).strokeRect(inset, 55 + i * 5, 420 - inset * 2, 539 - i * 10);
+        const inset = 12 + i * 5;
+        g.lineStyle(3,0x020810,.65).strokeRoundedRect(inset+1,40+i*5+2,420-inset*2,566-i*10,3);
+        g.lineStyle(i===1 ? 1.8 : 1.2,i===1 ? 0xc3b37b : 0x758f96,i===1 ? .65 : .52)
+          .strokeRoundedRect(inset,40+i*5,420-inset*2,566-i*10,3);
       }
-      for (const x of [17, 403])
-        for (const y of [57, 592]) {
-          g.fillStyle(0x07101a).fillRoundedRect(x - 6, y - 9, 12, 18, 3);
-          g.fillStyle(0x617084).fillRoundedRect(x - 4, y - 7, 8, 14, 2);
-          g.fillStyle(0xb9c7d6).fillRect(x - 2, y - 7, 2, 10);
+      for (const x of [18,402]) for (const y of [42,606]) {
+        g.fillStyle(0x050c16).fillRoundedRect(x-8,y-11,16,22,3);
+        g.fillStyle(0x40535e).fillRoundedRect(x-6,y-9,12,18,3);
+        g.fillStyle(0x9bab9e).fillRect(x-4,y-8,3,13);
+        for(const yy of [-5,5]) g.fillStyle(0x11222b).fillCircle(x+3,y+yy,1.4);
+      }
+      // Side entrance plates make incoming flank attacks readable.
+      for(const x of [15,405]) for(const y of [186,396]) {
+        g.fillStyle(0x040b14).fillRoundedRect(x-10,y-24,20,48,4);
+        g.lineStyle(1,0x748a83,.7).strokeRoundedRect(x-8,y-22,16,44,3);
+        g.fillStyle(0xd0af69,.55).fillRect(x-3,y-18,6,36);
+        g.fillStyle(0x07121c).fillRect(x-2,y-14,4,28);
+        for(let yy=y-16;yy<y+18;yy+=8) g.lineStyle(2,0xd0b26c,.6).lineBetween(x-7,yy,x-4,yy+3);
+      }
+    }
+
+    private drawTelegraphs() {
+      const g = this.targets;
+      this.entryLabel.setVisible(false);
+      for (const warning of model.telegraphs) {
+        const progress = 1 - warning.life / warning.maxLife;
+        const pulse = reducedMotion ? .75 : .6 + Math.sin(this.timer * 16) * .25;
+        if (warning.side === "top") {
+          g.fillStyle(0xf28b63,.045 + progress*.045).fillRect(35,43,350,64);
+          g.lineStyle(1.5,0xffa176,pulse).lineBetween(60,47,360,47);
+          if(warning.boss) this.entryLabel.setPosition(Math.max(100,Math.min(320,warning.x)),warning.y+28).setAlpha(.8+progress*.2).setVisible(true);
+          for (const cx of warning.boss ? [warning.x] : [155,210,265]) {
+            for(let i=0;i<2;i++) {
+              const cy=warning.y+i*13;
+              g.lineStyle(2,0xffab7d,pulse*(1-i*.25));
+              g.lineBetween(cx-5,cy-3,cx,cy+3);
+              g.lineBetween(cx,cy+3,cx+5,cy-3);
+            }
+          }
+          continue;
         }
-      // Enemies crossing this line deal damage. The line is quieter than the faces.
-      for (let x = 34; x < 390; x += 13)
-        g.fillStyle(0xf28b67, 0.24).fillRect(x, 520, 6, 1);
-      this.add
-        .text(379, 512, "DANGER", {
-          fontFamily: "monospace",
-          fontSize: "6px",
-          color: "#d1846e",
-          letterSpacing: 1,
-        })
-        .setOrigin(1, 0.5)
-        .setAlpha(0.6)
-        .setDepth(1);
-      this.add
-        .text(39, 20, "● LIVE", {
-          fontFamily: "monospace",
-          fontSize: "8px",
-          color: "#e99b7e",
-          letterSpacing: 1,
-        })
-        .setOrigin(0, 0.5)
-        .setDepth(40);
-      this.add
-        .text(382, 20, "UWC", {
-          fontFamily: "monospace",
-          fontSize: "8px",
-          color: "#b0c6dc",
-          letterSpacing: 1,
-        })
-        .setOrigin(1, 0.5)
-        .setDepth(40);
+        const fromLeft = warning.side === "left";
+        const x = fromLeft ? 29 : 391;
+        const direction = fromLeft ? 1 : -1;
+        g.fillStyle(0xf28b63,.05 + progress*.07).fillRect(fromLeft ? 27 : 311,warning.y-43,82,86);
+        g.lineStyle(2,0xff9d71,pulse).lineBetween(x,warning.y-37,x,warning.y+37);
+        for (let i=0;i<3;i++) {
+          const cx=x+direction*(12+i*16), cy=warning.y;
+          g.lineStyle(2,0xffa570,pulse*(1-i*.18));
+          g.lineBetween(cx-direction*4,cy-7,cx+direction*2,cy);
+          g.lineBetween(cx+direction*2,cy,cx-direction*4,cy+7);
+        }
+        g.lineStyle(2,0xffd089,.85).beginPath().arc(x+direction*16,warning.y-43,7,-Math.PI/2,-Math.PI/2+Math.PI*2*progress).strokePath();
+      }
     }
 
     private drawFrame(dt: number) {
@@ -400,11 +504,12 @@ export function createArena(
         this.previousMode = model.mode;
         this.cueLabel.setText(
           model.mode === "ready"
-            ? "좌우로 드래그 · 자동 발사"
-            : "공은 자동 발사됩니다 · 적의 돌진을 피하세요",
+            ? "상하좌우 드래그 · 자동 발사"
+            : "상하좌우 이동 · 붉은 진입 경고를 피하세요",
         );
       }
       this.targets.clear();
+      this.drawTelegraphs();
       const alive = new Set<number>();
       for (const enemy of model.bricks) {
         if (enemy.hp <= 0) continue;
@@ -414,6 +519,7 @@ export function createArena(
       for (const [id, art] of this.enemies) {
         if (alive.has(id)) continue;
         art.image.destroy();
+        art.frame?.destroy();
         art.hp.destroy();
         art.label?.destroy();
         this.enemies.delete(id);
@@ -465,7 +571,7 @@ export function createArena(
         const hp = this.add
           .text(x, y, "", {
             fontFamily: "Arial, sans-serif",
-            fontSize: elite ? "10px" : "9px",
+            fontSize: elite ? "10px" : "8px",
             fontStyle: "bold",
             color: "#f3f7ee",
             stroke: "#0b1420",
@@ -485,7 +591,8 @@ export function createArena(
               .setOrigin(0.5)
               .setDepth(14)
           : undefined;
-        art = { image, hp, label };
+        const frame = elite ? undefined : this.add.image(x,y,"enemy-frame").setDepth(13);
+        art = { image, frame, hp, label };
         this.enemies.set(enemy.id, art);
       }
       if (elite) {
@@ -517,7 +624,14 @@ export function createArena(
           h,
           7,
         );
-        art.image.setPosition(x, y - 3).setDisplaySize(w - 5, h - 5);
+        art.image.setPosition(x, y - 1).setDisplaySize(w - 7, h - 7);
+        art.frame?.setPosition(x,y).setDisplaySize(w+3,h+3);
+        const mark = enemy.role === "tank" ? 0xdcc47c : enemy.role === "ranged" ? 0xd3a0e4 : color;
+        g.fillStyle(mark,.85).fillRoundedRect(x-w/2+5,y-h/2+3,11,2,1);
+        if(enemy.entry !== "top") {
+          const side = enemy.entry === "left" ? -1 : 1;
+          g.fillStyle(0xffa677,.7).fillTriangle(x+side*(w/2+3),y-4,x+side*(w/2+7),y,x+side*(w/2+3),y+4);
+        }
       }
       if (enemy.flash > 0) art.image.setTintFill(0xfff9db);
       else art.image.clearTint();
@@ -540,7 +654,7 @@ export function createArena(
       );
       art.hp
         .setText(`${Math.ceil(enemy.hp)}`)
-        .setPosition(x, elite ? barY + 11 : y + h / 2 - 9);
+        .setPosition(x, elite ? barY + 11 : y + h / 2 - 7);
       if (enemy.slow > 0)
         g.lineStyle(1.5, 0x83d8ff, 0.8).strokeCircle(x, y - 2, w / 2 + 3);
       if (enemy.burn > 0 || enemy.poison > 0) {
@@ -571,7 +685,7 @@ export function createArena(
         const distance = 34 + i * 12;
         g.fillStyle(0xd6ef77, 0.28 - i * 0.04).fillCircle(
           p.x + Math.cos(angle) * distance,
-          p.y - 20 + Math.sin(angle) * distance,
+          p.y + Math.sin(angle) * distance,
           1.4,
         );
       }
@@ -809,7 +923,7 @@ export function createArena(
     banner: false,
     audio: { noAudio: true },
     input: { keyboard: false, mouse: false, touch: false, gamepad: false },
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: ArenaScene,
   });
 
@@ -844,8 +958,15 @@ export function createArena(
       model.finisher();
       emit(true);
     },
-    move(direction) {
-      model.move(direction);
+    move(horizontal, vertical = 0) {
+      model.move(horizontal, vertical);
+    },
+    point(x, y) {
+      model.point(x, y);
+    },
+    setDifficulty(difficulty) {
+      model.setDifficulty(difficulty);
+      emit(true);
     },
     getState() {
       return model.snapshot();

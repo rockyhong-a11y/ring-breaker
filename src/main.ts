@@ -5,6 +5,7 @@ import {
   type ArenaController,
 } from "./game/arena";
 
+import type { Difficulty } from "./game/model";
 import { UPGRADE_DEFS, getUpgrade, type UpgradeDef } from "./game/upgrades";
 
 const paths: Record<string, string> = {
@@ -57,6 +58,7 @@ type Save = {
   width: number;
   health: number;
   sound: boolean;
+  difficulty: Difficulty;
 };
 let save: Save = {
   gems: 0,
@@ -67,6 +69,7 @@ let save: Save = {
   width: 0,
   health: 0,
   sound: true,
+  difficulty: 2,
 };
 try {
   const raw = JSON.parse(localStorage.getItem("ring-breaker-save") || "null");
@@ -82,6 +85,7 @@ try {
     ] as const)
       if (Number.isFinite(raw[key]))
         save[key] = Math.max(0, Math.floor(raw[key]));
+    if ([1, 2, 3].includes(raw.difficulty)) save.difficulty = raw.difficulty;
     if (typeof raw.sound === "boolean") save.sound = raw.sound;
   }
 } catch {
@@ -95,20 +99,15 @@ const persist = () => {
   }
 };
 const n = (v: number) => v.toLocaleString("en-US");
-const waveNames = [
-  "오프닝 러시",
-  "태그 팀 습격",
-  "아틀라스의 도전",
-  "로열 럼블",
-  "타이탄 리매치",
-  "오닉스 챔피언십",
-];
+const difficultyNames = ["도전자", "하드", "나이트메어"];
+const stageNames = ["압박의 시작", "포위 전술", "챔피언의 지옥"];
+const waveNames = ["쐐기 돌격", "교차 대형", "아틀라스의 장벽", "장갑 관문", "사면 포위", "오닉스 챔피언십"];
 const waveNotes = [
-  "첫 대열을 뚫고 경험치를 모으세요",
-  "빠르게 쌓이는 적들을 연쇄 공격으로",
+  "쐐기 대열과 좌우 기습을 돌파하세요",
+  "엇갈리는 대열과 원거리 포화를 피하세요",
   "중보스 아틀라스가 링에 등장합니다",
-  "강해진 대열, 완성되어 가는 빌드",
-  "두 번째 중보스와 호위 레슬러",
+  "중장갑 문지기와 양측 포위망을 돌파하세요",
+  "사방에서 오는 호위병과 두 번째 중보스",
   "최종 보스 오닉스와 타이틀 매치",
 ];
 let arena: ArenaController;
@@ -140,46 +139,36 @@ const skillIcons: Record<string, string> = {
 };
 const skillStyle = (u: UpgradeDef) =>
   `style="--skill-color:${u.color};color:${u.color};border-color:${u.color}44;background:${u.color}0d"`;
-const emptySlots = (amount: number) =>
-  Array.from(
-    { length: amount },
-    () => '<span class="empty-slot">+</span>',
-  ).join("");
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
-<header class="site-header">
- <a class="brand" href="${base}" aria-label="Ring Breaker 홈"><span class="brand-mark">R<span>↗</span></span><span>RING<span class="brand-light">BREAKER</span><small>SLAY × BALL ROGUELITE</small></span></a>
- <nav class="desktop-nav" aria-label="메인 메뉴"><button class="nav-btn active" data-action="arena">아레나<span class="nav-dot"></span></button><button class="nav-btn" data-action="training">트레이닝</button><button class="nav-btn" data-action="collection">성장 도감</button></nav>
- <div class="header-right"><span class="currency">${icon("gem")}<b data-gems>${n(save.gems)}</b></span><span class="header-divider"></span><button class="icon-btn" data-action="sound" aria-label="사운드 끄기" aria-pressed="true">${icon("volume")}</button><button class="icon-btn" data-action="help" aria-label="게임 방법">${icon("help")}</button></div>
-</header>
-<main class="page">
- <section class="page-heading"><div><div class="eyebrow"><span></span> SMALL BALLS. BIG FIGHT.</div><h1>작은 공 하나로, 링을 뒤집다.</h1><p>쏟아지는 공, 몰려오는 레슬러. 나만의 빌드로 끝까지.</p></div><span class="edition">VOL. 02<span>THE PIT UPDATE</span></span></section>
- <div class="game-layout">
-  <aside class="left-column">
-   <section class="run-card"><div class="section-kicker"><span class="live-dot"></span> BALL SURVIVAL <span class="corner-label">SD EDITION</span></div><h2>BALLS OUT.<br><em>BRAWL ON.</em></h2><p class="run-description">공을 쏘고, 적을 부수고,<br>레벨업으로 판을 뒤집으세요.</p><div class="mode-tags"><span>연속 자동 발사</span><span>실시간 성장</span></div><div class="run-facts"><div>${icon("layers")}<span>돌파할 웨이브</span><b>6</b></div><div>${icon("bolt")}<span>액티브 / 패시브</span><b>8 / 8</b></div><div>${icon("trophy")}<span>중보스 + 최종 보스</span><b>2 + 1</b></div></div><button class="primary-btn" data-run-action data-action="start"><span>링에 뛰어들기</span>${icon("arrow")}</button><div class="start-hint">패들은 졸업. 이제 공세를 시작할 시간.</div></section>
-   <button class="route-card" data-action="route"><div class="route-top"><span>ROAD TO THE TITLE</span>${icon("arrow")}</div><div class="wave-route">${Array.from({ length: 6 }, (_, i) => `<span class="route-node ${i === 0 ? "current" : ""} ${i === 2 || i === 4 ? "elite-node" : ""}" data-node="${i + 1}">${i === 5 ? icon("trophy") : i === 2 || i === 4 ? icon("shield") : String(i + 1).padStart(2, "0")}</span>`).join("")}</div><p><span data-route-title>오프닝 러시</span><span data-route-wave>1 / 6</span></p></button>
-   <div class="personal-best">${icon("trophy")}<span>나의 최고 기록<b data-best>${n(save.best)} <small>PTS</small></b></span><span class="best-label">PERSONAL<br>BEST</span></div>
-   <div class="fight-tip">${icon("target")}<p>적이 링 아래에 닿기 전에 처치하세요.<br><strong>공은 자동으로, 이동은 당신의 손으로.</strong></p></div>
-  </aside>
-  <section class="arena-column" aria-label="게임 아레나">
-   <div class="arena-topline"><span><i></i> LIVE FROM THE PIT</span><div><button class="icon-btn small" data-action="pause" aria-label="일시정지">${icon("pause")}</button><button class="icon-btn small" data-action="fullscreen" aria-label="아레나 전체 화면">${icon("expand")}</button></div></div>
-   <div class="arena-cabinet"><div class="arena-scoreboard"><div class="wave-score"><span>WAVE <b data-wave>01</b><small>/ 06</small></span><strong data-wave-name>오프닝 러시</strong></div><div class="score-counter"><small>SCORE</small><b data-score>000000</b></div></div>
-    <div class="combat-bars"><div class="health-group">${icon("heart")}<div class="health-track"><i data-hp-fill></i></div><b data-health>100 / 100</b></div><div class="xp-group"><b data-level>LV. 01</b><div class="xp-track"><i data-xp-fill></i></div><small data-xp>0 / 20 XP</small></div></div>
-    <div class="arena-inner"><div id="game-canvas" aria-label="볼핏 레슬링 아레나. 드래그 또는 방향키로 이동하며 자동 발사합니다." role="application" tabindex="0"></div><div class="stage-pill"><span class="live-dot"></span><span data-stage-label>WAVE 01 · READY TO BRAWL</span></div><div class="play-prompt" data-ready><span class="tiny-label">NEW RULES. SAME FIGHTING SPIRIT.</span><strong>MORE BALLS.<br>MORE <em>CHAOS.</em></strong><button data-action="start">링에 뛰어들기 ${icon("arrow")}</button><small>드래그 이동 · 자동 발사 · 경험치 레벨업</small></div><button class="resume-overlay" data-action="resume" hidden>${icon("play")}<strong>PAUSED</strong><span>탭하여 경기 계속하기</span></button><div class="combo" data-combo hidden></div></div>
-    <div class="arena-bottomline"><span class="status-led"><i></i><span data-status>READY</span></span><span class="arena-brand">BREAK. LEVEL UP. REPEAT.</span><span class="kill-counter">${icon("target")}<b data-kills>0</b><small>KO</small></span></div>
-   </div>
-   <div class="arena-controls"><div>${icon("back")}<span>드래그 이동 <span class="desktop-control">/ <kbd>←</kbd> <kbd>→</kbd></span><b class="auto-fire-tag">AUTO FIRE</b></span>${icon("chevron")}</div><button class="finisher-btn" data-action="finisher" disabled>${icon("bolt")}<span>피니셔 <b data-charge>0%</b></span><kbd>F</kbd></button></div>
-   <div class="mobile-build-strip" data-mobile-build></div><p class="arena-note"><span class="mini-dot"></span> EVERY LEVEL IS A NEW POSSIBILITY.</p>
-  </section>
-  <aside class="right-column">
-   <section class="fighter-card"><div class="fighter-top"><span>YOUR FIGHTER</span><span class="rarity">✦ SLAY ORIGINAL</span></div><div class="fighter-art"><span class="fighter-bg-text">NO<br>VA.</span><div class="fighter-rays"></div><img class="sd-hero-image" src="${base}assets/sd-nova.png" alt="SLAY SD 레슬러 노바" draggable="false"/><span class="fighter-number">SD<b>01</b></span></div><div class="fighter-info"><div><h2>노바</h2><span>THE MIDNIGHT FLASH</span></div><span class="role-tag">SD 테크니션</span></div><p class="fighter-quote">“오늘의 상대? 전부 쓰러뜨리면 되잖아.”</p><div class="fighter-trait">${icon("fire")}<div><strong>파이어 볼</strong><small>불꽃으로 공세를 여는 스타팅 액티브</small></div><span>LV. 1</span></div></section>
-   <section class="build-card"><div class="build-heading"><h3>이번 도전의 빌드</h3><button data-action="collection" aria-label="성장 도감 열기">${icon("book")}</button></div><div class="loadout-label"><span>ACTIVE <small>자동 발사</small></span><b data-active-count>1 / 4</b></div><div class="build-slots active-slots" data-active-build>${emptySlots(4)}</div><div class="loadout-label passive-label"><span>PASSIVE <small>상시 효과</small></span><b data-passive-count>0 / 6</b></div><div class="build-slots passive-slots" data-passive-build>${emptySlots(6)}</div><p>레벨업마다 3개의 성장 중 하나를 선택하세요.</p><button data-action="collection">16가지 성장 살펴보기 ${icon("chevron")}</button></section>
-   <button class="training-teaser" data-action="training"><span class="training-icon">${icon("bolt")}</span><span><strong>도전이 끝나도, 성장은 계속</strong><small>토큰으로 영구 능력치 트레이닝</small></span>${icon("arrow")}</button>
-  </aside>
- </div>
- <section class="bottom-strip"><div><span class="outline-star">✦</span><span><b>새로운 규칙. 더 많은 가능성.</b><small>적의 얼굴을 부수고, 전신으로 맞서는 중보스와 챔피언을 넘어서세요.</small></span></div><button data-action="collection">내 빌드의 다음 한 수 ${icon("arrow")}</button></section>
- <footer><span>© 2026 RING BREAKER × SLAY</span><span>SMALL FIGHTERS. MASSIVE COMBOS.</span><span>BALL SURVIVAL ROGUELITE</span></footer>
+<main class="arena-column" aria-label="Ring Breaker 전체화면 아레나">
+ <div id="game-canvas" aria-label="상하좌우 드래그 또는 방향키로 이동하는 레슬링 볼 생존 게임" role="application" tabindex="0"></div>
+ <div class="screen-vignette"></div>
+ <header class="hud-top">
+  <button class="brand" data-action="menu" aria-label="경기 메뉴"><span class="brand-mark">R<span>↗</span></span><span>RING<br><b>BREAKER</b></span></button>
+  <button class="wave-display" data-action="route" aria-label="웨이브 및 난이도 정보"><span class="hud-eyebrow">WAVE <b data-wave>01</b><small>/ 06</small></span><strong data-wave-name>쐐기 돌격</strong><span class="wave-dots">${Array.from({length:6},(_,i)=>`<i data-node="${i+1}" class="${i===0?'current':''}"></i>`).join("")}</span></button>
+  <div class="hud-utilities"><button class="icon-btn sound-control" data-action="sound" aria-label="사운드 끄기" aria-pressed="true">${icon("volume")}</button><button class="icon-btn expand-control" data-action="fullscreen" aria-label="전체 화면">${icon("expand")}</button><button class="icon-btn pause-control" data-action="pause" aria-label="일시정지">${icon("pause")}</button></div>
+  <div class="health-group">${icon("heart")}<div class="health-track"><i data-hp-fill></i></div><b data-health>100 / 100</b></div>
+  <div class="difficulty-badge"><i></i><span data-difficulty>HARD</span><small data-stage-tier>PHASE 1 / 3</small></div>
+ </header>
+ <div class="xp-hud"><b data-level>LV. 01</b><div class="xp-track"><i data-xp-fill></i></div><small data-xp>0 / 20 XP</small></div>
+ <div class="combat-meta"><span class="score-counter"><small>SCORE</small><b data-score>000000</b></span><span class="kill-counter">${icon("target")}<b data-kills>0</b><small>KO</small></span></div>
+ <div class="stage-pill"><i></i><span data-stage-label>360° SURVIVAL · AUTO FIRE</span></div>
+ <div class="combo" data-combo hidden></div>
+ <section class="ready-screen" data-ready aria-label="경기 시작">
+  <div class="ready-content"><div class="edition"><span></span> THE PIT · 360° SURVIVAL</div><h1>SMALL BALLS.<br><em>BIG FIGHT.</em></h1><p class="ready-copy">사방에서 몰려오는 레슬러.<br>공을 쏟아붓고, 나만의 빌드로 링을 지배하세요.</p>
+  <div class="difficulty-selector" aria-label="난이도 선택">${[1,2,3].map(d=>`<button data-difficulty-choice="${d}" aria-pressed="${save.difficulty===d}" class="${save.difficulty===d?'selected':''}"><small>0${d}</small><strong>${difficultyNames[d-1]}</strong><span>${["강화된 대열","더 빠른 포위","극한의 공세"][d-1]}</span></button>`).join("")}</div>
+  <button class="primary-btn start-button" data-run-action data-action="start"><span>링에 뛰어들기</span>${icon("arrow")}</button>
+  <div class="ready-hint"><span class="movement-icon">✥</span> 상하좌우 드래그 / WASD <span>·</span> 자동 발사</div>
+  <nav class="ready-menu" aria-label="게임 메뉴"><button data-action="training">${icon("bolt")}트레이닝</button><button data-action="collection">${icon("book")}성장 도감</button><button data-action="help">${icon("help")}플레이 방법</button></nav>
+  <div class="ready-record"><span>${icon("trophy")}<b data-best>${n(save.best)} <small>PTS</small></b></span><span>${icon("gem")}<b data-gems>${n(save.gems)}</b><small>TOKENS</small></span></div>
+  </div>
+ </section>
+ <section class="resume-overlay" hidden aria-label="일시정지 메뉴"><div><span class="modal-eyebrow">TAKE A BREATHER</span><h2>ROUND PAUSED.</h2><p>호흡을 고르고, 다시 링으로.</p><button class="primary-btn full" data-action="resume">경기 계속하기 ${icon("play")}</button><div class="pause-menu"><button data-action="collection">${icon("book")}성장 도감</button><button data-action="help">${icon("help")}조작 방법</button></div></div></section>
+ <footer class="combat-bottom">
+  <div class="control-hint"><span class="movement-icon">✥</span><span>DRAG TO MOVE <b>360°</b></span><span data-status>READY</span></div>
+  <div class="loadout-panel"><div class="active-loadout"><span class="loadout-label">ACTIVE<small data-active-count>1 / 4</small></span><div class="build-slots" data-active-build></div></div><button class="finisher-btn" data-action="finisher" disabled>${icon("bolt")}<span>피니셔 <b data-charge>0%</b></span><kbd>F</kbd></button><div class="passive-loadout"><span class="loadout-label">PASSIVE<small data-passive-count>0 / 6</small></span><div class="build-slots" data-passive-build></div><button class="build-book" data-action="collection" aria-label="성장 도감 열기">${icon("book")}</button></div></div>
+ </footer>
 </main>
-<nav class="mobile-nav" aria-label="모바일 메뉴"><button data-action="arena" class="active">${icon("target")}<span>아레나</span></button><button data-action="training">${icon("bolt")}<span>트레이닝</span></button><button data-action="collection">${icon("book")}<span>성장 도감</span></button></nav>
 <dialog id="modal"><div class="modal-shell"><button class="modal-close icon-btn" data-action="close" aria-label="닫기">${icon("close")}</button><div id="modal-content"></div></div></dialog><div class="toast" role="status" aria-live="polite" hidden></div>`;
 const q = <T extends HTMLElement = HTMLElement>(s: string) =>
   document.querySelector<T>(s)!;
@@ -245,7 +234,7 @@ modal.addEventListener("click", (e) => {
 });
 function showHelp() {
   openModal(
-    `<div class="modal-eyebrow">WELCOME TO THE PIT</div><h2>패들은 내려놓고,<br>공세를 시작하세요.</h2><p class="modal-intro">공은 자동으로 발사됩니다. 노바를 움직여<br>경험치를 모으고, 내려오는 적들을 돌파하세요.</p><div class="help-steps"><div><b>01</b><span><strong>드래그로 이동, 공은 자동 발사</strong><small>링 안에서 좌우로 드래그하거나 ← → / A D로 이동하세요. 공은 적과 벽을 튕기며 여러 번 타격합니다.</small></span></div><div><b>02</b><span><strong>경험치를 모아 전투 중 레벨업</strong><small>처치한 상대가 보석을 떨어뜨립니다. 레벨업하면 경기가 잠시 멈추고 3가지 성장 중 하나를 고릅니다.</small></span></div><div><b>03</b><span><strong>액티브 4개, 패시브 6개</strong><small>화염·빙결·중독·번개 등 액티브는 자동으로 발동합니다. 패시브로 연사·다중 발사·치명타 등을 강화하세요. 각 기술은 최대 5레벨입니다.</small></span></div><div><b>04</b><span><strong>대열을 막고, 보스에 도전</strong><small>적이 아래에 도달하거나 투사체에 맞으면 체력이 줄어듭니다. 3·5웨이브의 아틀라스와 마지막 오닉스를 처치하세요. 피니셔는 게이지가 가득 차면 사용합니다.</small></span></div></div><div class="help-keys"><span><kbd>SPACE / ESC</kbd> 일시정지</span><span><kbd>F</kbd> 피니셔</span></div><button class="primary-btn full" data-action="close">이제 준비됐어요 ${icon("check")}</button>`,
+    `<div class="modal-eyebrow">WELCOME TO THE PIT</div><h2>사방을 누비고,<br>공세를 지배하세요.</h2><p class="modal-intro">공은 자동으로 발사됩니다. 노바를 움직여<br>경험치를 모으고, 사방의 포위망을 돌파하세요.</p><div class="help-steps"><div><b>01</b><span><strong>드래그로 이동, 공은 자동 발사</strong><small>링 안에서 상하좌우로 드래그하거나 방향키 / WASD로 이동하세요. 공은 적과 벽을 튕기며 여러 번 타격합니다.</small></span></div><div><b>02</b><span><strong>경험치를 모아 전투 중 레벨업</strong><small>처치한 상대가 보석을 떨어뜨립니다. 레벨업하면 경기가 잠시 멈추고 3가지 성장 중 하나를 고릅니다.</small></span></div><div><b>03</b><span><strong>액티브 4개, 패시브 6개</strong><small>화염·빙결·중독·번개 등 액티브는 자동으로 발동합니다. 패시브로 연사·다중 발사·치명타 등을 강화하세요. 각 기술은 최대 5레벨입니다.</small></span></div><div><b>04</b><span><strong>측면 기습을 피하고, 보스에 도전</strong><small>좌우 경고 표시 뒤에 기습대가 진입합니다. 적과 닿거나 투사체에 맞으면 체력이 줄어듭니다. 웨이브가 두 번 지날 때마다 압박이 3단계로 강해집니다. 3·5웨이브의 아틀라스와 마지막 오닉스를 처치하세요. 피니셔는 게이지가 가득 차면 사용합니다.</small></span></div></div><div class="help-keys"><span><kbd>SPACE / ESC</kbd> 일시정지</span><span><kbd>F</kbd> 피니셔</span></div><button class="primary-btn full" data-action="close">이제 준비됐어요 ${icon("check")}</button>`,
   );
 }
 function upgradeCard(u: UpgradeDef) {
@@ -352,8 +341,7 @@ function renderBuild() {
   q("[data-passive-build]").innerHTML = Array.from({ length: 6 }, (_, i) =>
     skillSlot(current.passiveSkills[i]),
   ).join("");
-  q("[data-mobile-build]").innerHTML =
-    `<span>A</span>${Array.from({ length: 4 }, (_, i) => skillSlot(current.activeSkills[i])).join("")}<span class="passive-indicator">P</span>${Array.from({ length: 6 }, (_, i) => skillSlot(current.passiveSkills[i])).join("")}`;
+
 }
 function startRun() {
   if (modal.open) modal.close();
@@ -364,15 +352,9 @@ function startRun() {
     power: Math.min(4, save.power),
     width: Math.min(4, save.width),
     health: Math.min(2, save.health),
+    difficulty: save.difficulty,
   });
   sound(600);
-  if (innerWidth < 1024)
-    q(".arena-column").scrollIntoView({
-      behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "instant"
-        : "smooth",
-      block: "start",
-    });
   q("#game-canvas").focus({ preventScroll: true });
 }
 function finish(won: boolean, score: number, wave: number) {
@@ -396,10 +378,11 @@ function onChange(state: ArenaState) {
   q("[data-wave]").textContent = String(state.wave).padStart(2, "0");
   q("[data-wave-name]").textContent = waveNames[state.wave - 1];
   q("[data-score]").textContent = String(state.score).padStart(6, "0");
-  q("[data-route-title]").textContent = waveNames[state.wave - 1];
-  q("[data-route-wave]").textContent = `${state.wave} / 6`;
-  q("[data-stage-label]").textContent =
-    `WAVE ${String(state.wave).padStart(2, "0")} · ${state.wave === 6 ? "CHAMPIONSHIP" : state.wave === 3 || state.wave === 5 ? "MINIBOSS INCOMING" : state.mode === "ready" ? "READY TO BRAWL" : "AUTO FIRE ON"}`;
+  q("[data-difficulty]").textContent = difficultyNames[state.difficulty - 1];
+  q("[data-stage-tier]").textContent = `PHASE ${state.stageTier} / 3`;
+  q("[data-stage-label]").textContent = `${stageNames[state.stageTier - 1]} · ${state.formation}`;
+  document.body.dataset.mode = state.mode;
+  document.body.dataset.tier = String(state.stageTier);
   q("[data-ready]").hidden = state.mode !== "ready";
   q(".resume-overlay").hidden = state.mode !== "paused";
   q("[data-status]").textContent = state.mode.toUpperCase();
@@ -444,6 +427,7 @@ arena = createArena(q("#game-canvas"), {
   onReward: showReward,
   onFinish: finish,
 });
+arena.setDifficulty(save.difficulty);
 current = arena.getState();
 onChange(current);
 updateSaveUI();
@@ -458,6 +442,18 @@ for (const name of ["contextmenu", "selectstart", "dragstart"])
   });
 document.addEventListener("click", (event) => {
   const target = event.target as Element;
+  const difficulty = target.closest<HTMLElement>("[data-difficulty-choice]");
+  if (difficulty) {
+    save.difficulty = Number(difficulty.dataset.difficultyChoice) as Difficulty;
+    persist();
+    arena.setDifficulty(save.difficulty);
+    document.querySelectorAll<HTMLElement>("[data-difficulty-choice]").forEach(btn => {
+      const selected = Number(btn.dataset.difficultyChoice) === save.difficulty;
+      btn.classList.toggle("selected", selected);
+      btn.setAttribute("aria-pressed", String(selected));
+    });
+    return;
+  }
   const buy = target.closest<HTMLButtonElement>("[data-buy]");
   if (buy) {
     const item = trainingItems.find((t) => t.key === buy.dataset.buy)!;
@@ -503,6 +499,11 @@ document.addEventListener("click", (event) => {
   const action = target.closest<HTMLElement>("[data-action]")?.dataset.action;
   if (!action) return;
   switch (action) {
+    case "menu":
+      if (current.mode === "playing") arena.pause();
+      else if (current.mode === "paused") arena.resume();
+      else showHelp();
+      break;
     case "start":
       startRun();
       break;
@@ -531,7 +532,7 @@ document.addEventListener("click", (event) => {
       break;
     case "arena":
       if (modal.open) closeModal();
-      q(".arena-column").scrollIntoView({ behavior: "smooth", block: "start" });
+      q("#game-canvas").focus({ preventScroll: true });
       break;
     case "sound":
       save.sound = !save.sound;
