@@ -110,7 +110,7 @@ export function createArena(
 
     preload() {
       // The gameplay remains complete if the optional generated illustration is unavailable.
-      this.load.image("ringside-wrestler", "/assets/wrestler.png");
+      this.load.image("ringside-wrestler", `${import.meta.env.BASE_URL}assets/wrestler.png`);
     }
 
     create() {

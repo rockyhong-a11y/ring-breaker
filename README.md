@@ -2,6 +2,8 @@
 
 프로레슬링 링에서 펼쳐지는 세로 화면용 벽돌깨기 로그라이트입니다. 공을 받아 선수와 챔피언을 격파하고, 웨이브 사이에 능력을 골라 한 번의 런을 완성하세요.
 
+[바로 플레이하기](https://rockyhong-a11y.github.io/ring-breaker/)
+
 ## 플레이
 
 - 휴대폰에서는 경기장 안에서 손가락을 좌우로 움직여 패들을 조작합니다. PC에서는 마우스·트랙패드 또는 `←` `→` / `A` `D`를 사용합니다.
@@ -45,3 +47,15 @@ npm run preview # 빌드 결과 미리보기
 ## 저장 데이터
 
 영구 훈련과 진행 기록은 현재 브라우저의 `localStorage`에 저장됩니다. 서버 계정이나 기기 간 동기화는 사용하지 않습니다. 브라우저 데이터를 지우거나 다른 기기·브라우저를 사용하면 저장 기록이 이어지지 않습니다.
+
+## GitHub Pages 배포
+
+Pages의 Source는 **GitHub Actions**로 설정합니다. `main`에 푸시하면 `.github/workflows/pages.yml`이 테스트와 빌드를 수행하고, `/ring-breaker/` 경로에서 정적 파일을 검사한 후 `dist/`를 배포합니다.
+
+```sh
+npm run build
+npm run preview
+npm run verify:pages -- http://localhost:4173/ring-breaker/
+```
+
+배포 후 `npm run verify:pages`로 실제 Pages의 스크립트·이미지·설치 경로를 검사할 수 있습니다. 저장소 루트를 브랜치 방식으로 배포하면 빌드 전 TypeScript가 제공되므로 사용하지 않습니다.

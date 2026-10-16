@@ -2,14 +2,15 @@
   "name": "Ring Breaker",
   "short_name": "Ring Breaker",
   "description": "프로레슬링 벽돌 깨기 로그라이트",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#10141f",
   "theme_color": "#10141f",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
